@@ -203,15 +203,36 @@
         ЧАТ <span class="msg-count" id="msgCount">0</span>
       </div>
       <div class="msgs" id="msgs"></div>
-      <button id="micBtn" class="mic-btn"
-        onmousedown="startMic()" onmouseup="stopMic()"
-        ontouchstart="startMic(event)" ontouchend="stopMic()">🎤</button>
       <div class="chat-inp-area">
-        <textarea class="chat-inp" id="chatInp"
-          placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
-          onkeydown="handleKey(event)"
-          oninput="autoResize(this)"></textarea>
-        <button class="send-btn" onclick="sendMsg()">➤</button>
+        <div class="chat-inp-wrap">
+          <textarea class="chat-inp" id="chatInp"
+            placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"></textarea>
+          <div class="chat-inp-actions">
+            <button class="chat-act-btn" onclick="insertMention()" title="Упомянуть">@</button>
+            <button class="chat-act-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
+          </div>
+          <button class="send-btn" onclick="sendMsg()">➤</button>
+        </div>
+
+        <!-- Эмодзи пикер -->
+        <div class="emoji-picker" id="emojiPicker">
+          <div class="emoji-grid" id="emojiGrid"></div>
+        </div>
+
+        <!-- Большая кнопка микрофона -->
+        <div class="mic-area">
+          <button id="micBtn" class="mic-big-btn"
+            onclick="toggleMic()"
+            onmousedown="onMicDown()"
+            onmouseup="onMicUp()"
+            ontouchstart="onMicDown(event)"
+            ontouchend="onMicUp(event)">
+            🎤
+          </button>
+          <span class="mic-hint" id="micHint">Нажми · Держи для записи</span>
+        </div>
       </div>
     </div>
 

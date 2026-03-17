@@ -490,17 +490,6 @@ socket.on('chat', ({ name, text }) => addMsg(name, text, 'other'));
 //  ПОЛЬЗОВАТЕЛИ
 // ============================================================
 
-socket.on('user_joined', ({ name, count }) => {
-  membersN = count; updateMembers();
-  addMsg('', `${esc(name)} присоединился 👋`, 'sys');
-  toast(`${esc(name)} в комнате!`, 'info');
-  addLog(`${esc(name)} вошёл в комнату`, 'sys');
-});
-socket.on('user_left', ({ name, count }) => {
-  membersN = count; updateMembers();
-  addMsg('', `${esc(name)} вышел 👋`, 'sys');
-  addLog(`${esc(name)} вышел`, 'sys');
-});
 socket.on('error_msg', msg => {
   toast(msg, 'err');
   setBtn('createBtn', false, '✨ Создать комнату');
@@ -599,92 +588,134 @@ function shareRoom() {
 }
 
 // ============================================================
-//  МИКРОФОН (WebRTC Push-to-Talk)
+//  МИКРОФОН
 // ============================================================
 
-let micStream      = null;
-let peerConns      = {};
-let memberIds      = [];
-const DUCK_VOL     = 0.15;
-const RESTORE_VOL  = 1;
+let micStream     = null;
+let peerConns     = {};
+let memberIds     = [];
+let micMode       = null; // 'toggle' | 'hold'
+let micActive     = false;
+let micHoldTimer  = null;
+const DUCK_VOL    = 0.15;
+const remoteAudios = {};
 
-// Запоминаем ID участников при входе
-socket.on('room_joined', ({ memberIds: ids }) => {
-  if (ids) memberIds = ids;
-});
-socket.on('user_joined', ({ id }) => {
+socket.on('room_joined', ({ memberIds: ids }) => { if (ids) memberIds = ids; });
+socket.on('user_joined', ({ name, count, id }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} присоединился 👋`, 'sys');
+  toast(`${esc(name)} в комнате!`, 'info');
+  addLog(`${esc(name)} вошёл в комнату`, 'sys');
   if (id && !memberIds.includes(id)) memberIds.push(id);
 });
-socket.on('user_left', ({ id }) => {
-  memberIds = memberIds.filter(i => i !== id);
-  if (peerConns[id]) { peerConns[id].close(); delete peerConns[id]; }
+socket.on('user_left', ({ name, count, id }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} вышел 👋`, 'sys');
+  addLog(`${esc(name)} вышел`, 'sys');
+  if (id) {
+    memberIds = memberIds.filter(i => i !== id);
+    if (peerConns[id]) { peerConns[id].close(); delete peerConns[id]; }
+    if (remoteAudios[id]) { remoteAudios[id].remove(); delete remoteAudios[id]; }
+  }
 });
 
 function duckVolume(yes) {
-  const vol = yes ? DUCK_VOL : RESTORE_VOL;
-  video.volume = vol;
-  document.getElementById('volSlider').value = vol;
+  video.volume = yes ? DUCK_VOL : 1;
+  document.getElementById('volSlider').value = yes ? DUCK_VOL : 1;
   updateVolBtn();
 }
 
-const remoteAudios = {};
-
 function makePeerConn(remoteId) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  
   pc.onicecandidate = e => {
     if (e.candidate) socket.emit('rtc_ice', { to: remoteId, candidate: e.candidate });
   };
-
   pc.ontrack = e => {
     let audio = remoteAudios[remoteId];
     if (!audio) {
       audio = document.createElement('audio');
       audio.autoplay = true;
       audio.playsInline = true;
-      document.body.appendChild(audio); // держим в DOM чтобы не удалился
+      document.body.appendChild(audio);
       remoteAudios[remoteId] = audio;
     }
     audio.srcObject = e.streams[0];
-    audio.play().catch(err => console.warn('audio play error:', err));
+    audio.play().catch(err => console.warn('audio play:', err));
   };
-
-  if (micStream) {
-    micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
-  }
-
+  if (micStream) micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
   peerConns[remoteId] = pc;
   return pc;
 }
 
-async function startMic() {
-  if (micStream) return;
+async function startMicStream() {
+  if (micStream) return true;
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    socket.emit('mic_start');
-    duckVolume(true);
-    document.getElementById('micBtn').classList.add('active');
-    toast('🎤 Говори!', 'play');
-    for (const id of memberIds) {
-      const pc = makePeerConn(id);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('rtc_offer', { to: id, offer });
-    }
+    return true;
   } catch (e) {
     toast('❌ Нет доступа к микрофону', 'err');
+    return false;
   }
 }
 
-function stopMic() {
-  if (!micStream) return;
-  micStream.getTracks().forEach(t => t.stop());
-  micStream = null;
+async function activateMic() {
+  if (micActive) return;
+  const ok = await startMicStream();
+  if (!ok) return;
+  micActive = true;
+  socket.emit('mic_start');
+  duckVolume(true);
+  document.getElementById('micBtn').classList.add('active');
+  document.getElementById('micHint').textContent = '🔴 Говоришь...';
+  for (const id of memberIds) {
+    const pc = makePeerConn(id);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit('rtc_offer', { to: id, offer });
+  }
+}
+
+function deactivateMic() {
+  if (!micActive) return;
+  micActive = false;
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   Object.values(peerConns).forEach(pc => pc.close());
   peerConns = {};
   socket.emit('mic_stop');
   duckVolume(false);
   document.getElementById('micBtn').classList.remove('active');
+  document.getElementById('micHint').textContent = 'Нажми · Держи для записи';
+}
+
+// Клик — toggle, зажатие — hold
+let holdActivated = false;
+
+function onMicDown() {
+  holdActivated = false;
+  micHoldTimer = setTimeout(async () => {
+    holdActivated = true;
+    micMode = 'hold';
+    await activateMic();
+  }, 300);
+}
+
+function onMicUp(e) {
+  if (e) e.preventDefault();
+  clearTimeout(micHoldTimer);
+  if (holdActivated) {
+    deactivateMic();
+    micMode = null;
+  }
+}
+
+function toggleMic() {
+  if (holdActivated) return; // уже обработано hold
+  if (micActive) {
+    deactivateMic();
+  } else {
+    micMode = 'toggle';
+    activateMic();
+  }
 }
 
 socket.on('rtc_offer', async ({ from, offer }) => {
@@ -706,15 +737,65 @@ socket.on('mic_start', ({ name }) => {
   addLog(`🎤 ${esc(name)} включил микрофон`, 'sys');
   duckVolume(true);
 });
-socket.on('mic_stop', ({ from }) => {
-  duckVolume(false);
-  if (peerConns[from]) { peerConns[from].close(); delete peerConns[from]; }
-  if (remoteAudios[from]) { 
-    remoteAudios[from].remove(); 
-    delete remoteAudios[from]; 
+socket.on('mic_stop', () => { duckVolume(false); });
+
+// ============================================================
+//  @ УПОМИНАНИЯ
+// ============================================================
+
+function insertMention() {
+  const room = rooms?.[myRoom];
+  const inp = document.getElementById('chatInp');
+  // Берём список участников из логов
+  inp.value += '@';
+  inp.focus();
+  toast('Напиши имя после @', 'info');
+}
+
+// ============================================================
+//  ЭМОДЗИ ПИКЕР
+// ============================================================
+
+const EMOJIS = [
+  '😀','😂','🥹','😍','🥰','😎','🤩','😭','😡','🤔',
+  '👍','👎','❤️','🔥','💯','✨','🎉','🎬','🍿','👀',
+  '😴','🤣','😱','🥳','😏','🤗','😶','🫡','💀','🗿',
+  '👋','🙌','🤝','💪','🫶','🙏','👏','🤌','😤','🫠',
+];
+
+let emojiPickerOpen = false;
+
+function buildEmojiGrid() {
+  const grid = document.getElementById('emojiGrid');
+  if (grid.children.length) return;
+  EMOJIS.forEach(e => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn';
+    btn.textContent = e;
+    btn.onclick = () => insertEmoji(e);
+    grid.appendChild(btn);
+  });
+}
+
+function toggleEmojiPicker() {
+  emojiPickerOpen = !emojiPickerOpen;
+  buildEmojiGrid();
+  document.getElementById('emojiPicker').classList.toggle('show', emojiPickerOpen);
+}
+
+function insertEmoji(emoji) {
+  const inp = document.getElementById('chatInp');
+  inp.value += emoji;
+  inp.focus();
+  autoResize(inp);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.chat-inp-area')) {
+    emojiPickerOpen = false;
+    document.getElementById('emojiPicker')?.classList.remove('show');
   }
 });
-
 // ============================================================
 //  INVITE POPUP
 // ============================================================
