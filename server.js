@@ -62,7 +62,9 @@ function httpsGet(targetUrl, extraHeaders = {}) {
       path: parsed.pathname + parsed.search,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        'Referer': 'https://rutube.ru/', 'Origin': 'https://rutube.ru',
+        'Referer':    'https://rutube.ru/',
+        'Origin':     'https://rutube.ru',
+        'Accept':     '*/*',
         ...extraHeaders,
       }
     }, res => {
@@ -109,7 +111,10 @@ app.get('/api/hls-proxy', async (req, res) => {
   if (!targetUrl) return res.status(400).send('no url');
   let parsed;
   try { parsed = new urlMod.URL(targetUrl); } catch { return res.status(400).send('bad url'); }
-  if (!parsed.hostname.endsWith('rutube.ru') && !parsed.hostname.endsWith('cdnvideo.ru') && !parsed.hostname.endsWith('video.rutube.ru')) {
+  if (!parsed.hostname.endsWith('rutube.ru') && 
+    !parsed.hostname.endsWith('cdnvideo.ru') && 
+    !parsed.hostname.endsWith('video.rutube.ru') &&
+    !parsed.hostname.endsWith('rtbcdn.ru')) {
     return res.status(403).send('forbidden domain');
   }
   try {
