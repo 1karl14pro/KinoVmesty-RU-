@@ -81,9 +81,25 @@ app.get('/api/rutube-hls', async (req, res) => {
     const apiUrl = `https://rutube.ru/api/play/options/${id}/?no_404=true&referer=https%3A%2F%2Frutube.ru&format=json`;
     const { body } = await httpsGet(apiUrl);
     const data = JSON.parse(body.toString());
-    console.log('[RUTUBE API]', JSON.stringify(data?.video_balancer));
-    const hlsUrl = data?.video_balancer?.m3u8;
-    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. video_balancer: ' + JSON.stringify(data?.video_balancer) });
+
+    // Пробуем все возможные поля где может быть HLS
+    const hlsUrl =
+      data?.video_balancer?.m3u8 ||
+      data?.video_balancer?.m3u8_url ||
+      data?.live_streams?.hls ||
+      data?.hls_url ||
+      data?.m3u8 ||
+      // Ищем в массиве sources если есть
+      (Array.isArray(data?.sources) && data.sources.find(s => s.url?.includes('.m3u8'))?.url) ||
+      null;
+
+    // Логируем весь ответ для диагностики
+    console.log('[RUTUBE] keys:', Object.keys(data || {}));
+    console.log('[RUTUBE] video_balancer:', JSON.stringify(data?.video_balancer));
+    console.log('[RUTUBE] hls_url:', data?.hls_url);
+    console.log('[RUTUBE] live_streams:', JSON.stringify(data?.live_streams));
+
+    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. Структура: ' + JSON.stringify(Object.keys(data || {})) });
     res.json({ hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
