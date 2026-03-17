@@ -81,8 +81,9 @@ app.get('/api/rutube-hls', async (req, res) => {
     const apiUrl = `https://rutube.ru/api/play/options/${id}/?no_404=true&referer=https%3A%2F%2Frutube.ru&format=json`;
     const { body } = await httpsGet(apiUrl);
     const data = JSON.parse(body.toString());
+    console.log('[RUTUBE API]', JSON.stringify(data?.video_balancer));
     const hlsUrl = data?.video_balancer?.m3u8;
-    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден' });
+    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. video_balancer: ' + JSON.stringify(data?.video_balancer) });
     res.json({ hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
