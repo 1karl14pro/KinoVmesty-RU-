@@ -888,3 +888,181 @@ socket.on('room_type_changed', ({ type, name }) => {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('invitePopup')?.addEventListener('click', closeInvitePopup);
 });
+
+// ============================================================
+//  ПЛАТФОРМЫ
+// ============================================================
+
+let selectedPlatform = 'rutube';
+
+const PLATFORM_INFO = {
+  rutube:  { label: 'Rutube',    hint: 'Вставь ссылку: https://rutube.ru/video/...',          placeholder: 'https://rutube.ru/video/...' },
+  youtube: { label: 'YouTube',   hint: 'Вставь ссылку: https://youtube.com/watch?v=...',       placeholder: 'https://youtube.com/watch?v=...' },
+  vk:      { label: 'VK Видео', hint: 'Вставь ссылку: https://vkvideo.ru/video-123_456',     placeholder: 'https://vkvideo.ru/video-123_456' },
+};
+
+function selectPlatform(platform) {
+  selectedPlatform = platform;
+  // Убираем active у всех
+  document.querySelectorAll('.platform-opt').forEach(el => el.classList.remove('active'));
+  document.getElementById(`plt-${platform}`).classList.add('active');
+  // Обновляем подсказки
+  const info = PLATFORM_INFO[platform];
+  document.getElementById('urlLabel').textContent = `Ссылка на видео ${info.label}`;
+  document.getElementById('urlCreate').placeholder = info.placeholder;
+  document.getElementById('platformHint').textContent = info.hint;
+}
+
+// ============================================================
+//  ПЛЕЕР — мультиплатформа
+// ============================================================
+
+let currentPlatform = 'rutube';
+let ytPlayer        = null; // YouTube IFrame API player
+let ytReady         = false;
+
+// Загружаем YouTube IFrame API заранее
+window.onYouTubeIframeAPIReady = function() { ytReady = true; };
+
+function loadYouTubeAPI() {
+  if (document.getElementById('yt-api-script')) return;
+  const tag = document.createElement('script');
+  tag.id  = 'yt-api-script';
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+loadYouTubeAPI();
+
+async function loadVideo(videoId, videoUrl, platform) {
+  currentPlatform = platform || 'rutube';
+  showLoading(true);
+  document.getElementById('vidError').classList.remove('show');
+  document.getElementById('urlDisplay').textContent = videoUrl;
+
+  // Убираем старый iframe если есть
+  const oldFrame = document.getElementById('embedFrame');
+  if (oldFrame) oldFrame.remove();
+  if (hls)      { hls.destroy(); hls = null; }
+  if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+
+  if (platform === 'youtube') {
+    await loadYouTube(videoId);
+  } else if (platform === 'vk') {
+    await loadVK(videoId);
+  } else {
+    await loadRutube(videoId, videoUrl);
+  }
+}
+
+// ── Rutube (HLS) ──────────────────────────────────────────
+async function loadRutube(videoId, videoUrl) {
+  // Показываем нативный video элемент
+  document.getElementById('videoEl').style.display = 'block';
+  let hlsUrl;
+  try {
+    const resp = await fetch(`/api/rutube-hls?id=${encodeURIComponent(videoId)}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.hlsUrl) throw new Error(data.error || 'нет hlsUrl');
+    hlsUrl = data.hlsUrl;
+  } catch (e) { showError(`Ошибка HLS: ${e.message}`); return; }
+
+  if (Hls.isSupported()) {
+    hls = new Hls({ enableWorker: true });
+    hls.loadSource(hlsUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      showLoading(false);
+      const overlay = document.getElementById('vidOverlay');
+      overlay.classList.add('force-show');
+      setTimeout(() => overlay.classList.remove('force-show'), 2000);
+    });
+    hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) showError('Ошибка HLS — ' + data.type); });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = hlsUrl;
+    showLoading(false);
+  } else {
+    showError('Браузер не поддерживает HLS.');
+  }
+}
+
+// ── YouTube (IFrame API) ──────────────────────────────────
+function loadYouTube(videoId) {
+  return new Promise(resolve => {
+    document.getElementById('videoEl').style.display = 'none';
+    const wrap = document.getElementById('videoWrap');
+
+    const div = document.createElement('div');
+    div.id = 'embedFrame';
+    div.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+    wrap.appendChild(div);
+
+    const tryCreate = () => {
+      ytPlayer = new YT.Player('embedFrame', {
+        videoId,
+        playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady: () => { showLoading(false); resolve(); },
+          onError: (e) => { showError('YouTube: видео недоступно (' + e.data + ')'); resolve(); },
+          onStateChange: (e) => {
+            // Синхронизируем время для хоста
+            if (isHost && e.data === YT.PlayerState.PLAYING) {
+              setInterval(() => {
+                if (ytPlayer && isHost) socket.emit('time_update', { time: ytPlayer.getCurrentTime() });
+              }, 3000);
+            }
+          }
+        }
+      });
+    };
+
+    if (ytReady && typeof YT !== 'undefined') tryCreate();
+    else { window.onYouTubeIframeAPIReady = () => { ytReady = true; tryCreate(); }; }
+  });
+}
+
+// ── VK Видео (iframe embed) ───────────────────────────────
+function loadVK(videoId) {
+  return new Promise(resolve => {
+    document.getElementById('videoEl').style.display = 'none';
+    const wrap = document.getElementById('videoWrap');
+    const [oid, id] = videoId.split('_');
+
+    const iframe = document.createElement('iframe');
+    iframe.id  = 'embedFrame';
+    iframe.src = `https://vk.com/video_ext.php?oid=${oid}&id=${id}&autoplay=0&js_api=1`;
+    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;';
+    iframe.allow = 'autoplay; fullscreen';
+    iframe.allowFullscreen = true;
+    iframe.onload = () => { showLoading(false); resolve(); };
+    iframe.onerror = () => { showError('VK: не удалось загрузить видео'); resolve(); };
+    wrap.appendChild(iframe);
+  });
+}
+
+// ── Управление плеером (с учётом платформы) ──────────────
+function platformPlay() {
+  if (currentPlatform === 'youtube' && ytPlayer) ytPlayer.playVideo();
+  else if (currentPlatform === 'vk') sendVKCmd('play');
+  else { video.play(); }
+}
+function platformPause() {
+  if (currentPlatform === 'youtube' && ytPlayer) ytPlayer.pauseVideo();
+  else if (currentPlatform === 'vk') sendVKCmd('pause');
+  else { video.pause(); }
+}
+function platformSeek(time) {
+  if (currentPlatform === 'youtube' && ytPlayer) ytPlayer.seekTo(time, true);
+  else if (currentPlatform === 'vk') { /* VK не поддерживает seek через API */ }
+  else { video.currentTime = time; }
+}
+function platformGetTime() {
+  if (currentPlatform === 'youtube' && ytPlayer) return ytPlayer.getCurrentTime() || 0;
+  return video.currentTime || 0;
+}
+
+function sendVKCmd(cmd) {
+  const frame = document.getElementById('embedFrame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage(JSON.stringify({ method: cmd }), '*');
+  }
+}

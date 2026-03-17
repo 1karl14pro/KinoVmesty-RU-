@@ -27,17 +27,38 @@
     <button class="stab" onclick="switchTab('browse')">🌐 Открытые комнаты</button>
   </div>
 
-  <!-- ТАБ: Создать -->
+  <!-- ТАБ: Создать комнату -->
   <div class="tab-panel active" id="tab-create">
     <div class="card wide-card">
       <div class="inp-group">
         <label>Твой ник</label>
         <input id="nameCreate" type="text" placeholder="Как тебя называть?" maxlength="32"/>
       </div>
+
+      <!-- Выбор платформы -->
       <div class="inp-group">
-        <label>Ссылка на видео Rutube</label>
-        <input id="urlCreate" type="text" placeholder="https://rutube.ru/video/..."/>
+        <label>Платформа</label>
+        <div class="platform-grid">
+          <div class="platform-opt active" id="plt-rutube" onclick="selectPlatform('rutube')">
+            <div class="platform-logo rutube-logo">RUTUBE</div>
+          </div>
+          <div class="platform-opt" id="plt-youtube" onclick="selectPlatform('youtube')">
+            <div class="platform-logo youtube-logo">▶ YouTube</div>
+          </div>
+          <div class="platform-opt" id="plt-vk" onclick="selectPlatform('vk')">
+            <div class="platform-logo vk-logo">VK Видео</div>
+          </div>
+        </div>
       </div>
+
+      <!-- Инпут ссылки -->
+      <div class="inp-group">
+        <label id="urlLabel">Ссылка на видео Rutube</label>
+        <input id="urlCreate" type="text" placeholder="https://rutube.ru/video/..."/>
+        <div class="platform-hint" id="platformHint">Вставь ссылку на видео с Rutube</div>
+      </div>
+
+      <!-- Тип комнаты -->
       <div class="room-type-row">
         <div class="room-type-opt active" id="typeOpen" onclick="selectType('open')">
           <div class="rtype-icon">🌐</div>
@@ -56,10 +77,12 @@
           <div class="rtype-check">✓</div>
         </div>
       </div>
+
       <div class="inp-group" id="titleGroup">
         <label>Название комнаты</label>
         <input id="titleCreate" type="text" placeholder="Например: смотрим аниме 🍿" maxlength="60"/>
       </div>
+
       <button class="btn btn-primary" id="createBtn" onclick="createRoom()">✨ Создать комнату</button>
     </div>
   </div>

@@ -1,4 +1,4 @@
-// КиноВместе — сервер v4
+// КиноВместе — сервер v5
 // npm install express socket.io
 // node server.js
 
@@ -18,8 +18,8 @@ const PORT   = process.env.PORT || 8080;
 app.use(express.static(path.join(__dirname)));
 app.use(express.json());
 app.get('/health', (req, res) => res.send('ok'));
-// ─── Сессии (хранятся в памяти, в продакшне — Redis) ──────────────────────
-// session = { sessionId, name, roomCode, createdAt }
+
+// ─── Сессии ───────────────────────────────────────────────────────────────────
 const sessions = new Map();
 
 function createSession(name) {
@@ -27,61 +27,42 @@ function createSession(name) {
   sessions.set(sessionId, { sessionId, name, roomCode: null, createdAt: Date.now() });
   return sessionId;
 }
+function getSession(id) { return id ? sessions.get(id) || null : null; }
 
-function getSession(sessionId) {
-  if (!sessionId) return null;
-  return sessions.get(sessionId) || null;
-}
-
-// Чистим старые сессии раз в час (старше 24ч)
 setInterval(() => {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  for (const [id, s] of sessions) {
-    if (s.createdAt < cutoff) sessions.delete(id);
-  }
+  for (const [id, s] of sessions) if (s.createdAt < cutoff) sessions.delete(id);
 }, 60 * 60 * 1000);
 
-// ─── REST: управление сессиями ─────────────────────────────────────────────
-
-// Создать/проверить сессию
+// ─── REST ──────────────────────────────────────────────────────────────────────
 app.post('/api/session', (req, res) => {
   const { sessionId, name } = req.body;
   const existing = getSession(sessionId);
   if (existing) {
-    // Обновляем имя если передали
     if (name) existing.name = sanitize(name, 32);
     return res.json({ sessionId: existing.sessionId, name: existing.name, roomCode: existing.roomCode });
   }
-  // Новая сессия
   const safeName = sanitize(name, 32) || 'Гость';
-  const newId = createSession(safeName);
-  res.json({ sessionId: newId, name: safeName, roomCode: null });
+  res.json({ sessionId: createSession(safeName), name: safeName, roomCode: null });
 });
 
-// Получить список открытых комнат
 app.get('/api/rooms', (req, res) => {
   const list = Object.values(rooms)
     .filter(r => r.type === 'open' && r.members.size > 0)
-    .map(r => ({
-      code:    r.code,
-      title:   r.title,
-      members: r.members.size,
-      videoUrl: r.videoUrl,
-    }));
+    .map(r => ({ code: r.code, title: r.title, members: r.members.size, videoUrl: r.videoUrl, platform: r.platform }));
   res.json(list);
 });
 
-// ─── Утилита: HTTPS GET ────────────────────────────────────────────────────
+// ─── HTTPS GET ─────────────────────────────────────────────────────────────────
 function httpsGet(targetUrl, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new urlMod.URL(targetUrl);
     https.get({
       hostname: parsed.hostname,
-      path:     parsed.pathname + parsed.search,
+      path: parsed.pathname + parsed.search,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        'Referer':    'https://rutube.ru/',
-        'Origin':     'https://rutube.ru',
+        'Referer': 'https://rutube.ru/', 'Origin': 'https://rutube.ru',
         ...extraHeaders,
       }
     }, res => {
@@ -92,7 +73,7 @@ function httpsGet(targetUrl, extraHeaders = {}) {
   });
 }
 
-// ─── HLS: получить URL ─────────────────────────────────────────────────────
+// ─── Rutube HLS ────────────────────────────────────────────────────────────────
 app.get('/api/rutube-hls', async (req, res) => {
   const id = String(req.query.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
   if (!id) return res.status(400).json({ error: 'no id' });
@@ -101,15 +82,11 @@ app.get('/api/rutube-hls', async (req, res) => {
     const { body } = await httpsGet(apiUrl);
     const data = JSON.parse(body.toString());
     const hlsUrl = data?.video_balancer?.m3u8;
-    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. Видео приватное или недоступное.' });
-    console.log(`[HLS] OK id=${id}`);
+    if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден' });
     res.json({ hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}` });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── HLS: прокси сегментов ─────────────────────────────────────────────────
 app.get('/api/hls-proxy', async (req, res) => {
   const targetUrl = req.query.u;
   if (!targetUrl) return res.status(400).send('no url');
@@ -135,13 +112,27 @@ app.get('/api/hls-proxy', async (req, res) => {
     }
     res.setHeader('Content-Type', headers['content-type'] || 'video/mp2t');
     res.status(status).send(body);
-  } catch (e) {
-    res.status(500).send(e.message);
-  }
+  } catch (e) { res.status(500).send(e.message); }
 });
 
-// ─── Хранилище комнат ──────────────────────────────────────────────────────
-// room.type = 'open' | 'closed'
+// ─── Определение платформы и ID ───────────────────────────────────────────────
+function extractVideo(url) {
+  // YouTube
+  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (m) return { platform: 'youtube', id: m[1] };
+
+  // VK Video
+  m = url.match(/vkvideo\.ru\/video(-?\d+)_(\d+)/) || url.match(/vk\.com\/video(-?\d+)_(\d+)/);
+  if (m) return { platform: 'vk', id: `${m[1]}_${m[2]}` };
+
+  // Rutube
+  m = url.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9_-]+)/);
+  if (m) return { platform: 'rutube', id: m[1] };
+
+  return null;
+}
+
+// ─── Хранилище комнат ─────────────────────────────────────────────────────────
 const rooms = {};
 
 function makeCode() {
@@ -149,28 +140,20 @@ function makeCode() {
   do { code = Math.random().toString(36).slice(2, 8).toUpperCase(); } while (rooms[code]);
   return code;
 }
-
 function sanitize(str, max = 300) {
   if (typeof str !== 'string') return '';
   return str.trim().slice(0, max);
 }
 
-function extractId(u) {
-  const m = u.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : null;
-}
-
-// ─── Socket.IO ─────────────────────────────────────────────────────────────
+// ─── Socket.IO ────────────────────────────────────────────────────────────────
 io.on('connection', socket => {
   console.log(`[+] ${socket.id}`);
 
-  // Привязать сессию к сокету
   socket.on('auth', ({ sessionId }) => {
     const session = getSession(sessionId);
     if (!session) { socket.emit('auth_fail'); return; }
     socket.sessionId = sessionId;
     socket.userName  = session.name;
-    // Если сессия была в комнате — предлагаем переподключиться
     if (session.roomCode && rooms[session.roomCode]) {
       socket.emit('session_restore', { roomCode: session.roomCode, name: session.name });
     } else {
@@ -178,27 +161,23 @@ io.on('connection', socket => {
     }
   });
 
-  // Создать комнату
   socket.on('create_room', ({ name, videoUrl, type, title, sessionId }) => {
     const safeName  = sanitize(name, 32) || 'Хозяин';
     const safeUrl   = sanitize(videoUrl, 500);
     const safeType  = type === 'open' ? 'open' : 'closed';
     const safeTitle = sanitize(title, 60) || safeName + ' смотрит';
-    const videoId   = extractId(safeUrl);
-    if (!videoId) { socket.emit('error_msg', 'Не могу распознать ссылку Rutube'); return; }
+
+    const video = extractVideo(safeUrl);
+    if (!video) { socket.emit('error_msg', 'Не могу распознать ссылку. Поддерживаются YouTube, VK Видео, Rutube'); return; }
 
     const code = makeCode();
     rooms[code] = {
-      code,
-      hostId:   socket.id,
-      videoUrl: safeUrl,
-      videoId,
-      type:     safeType,
-      title:    safeTitle,
-      state:    'paused',
-      time:     0,
-      members:  new Set([socket.id]),
-      names:    { [socket.id]: safeName },
+      code, hostId: socket.id,
+      videoUrl: safeUrl, videoId: video.id, platform: video.platform,
+      type: safeType, title: safeTitle,
+      state: 'paused', time: 0,
+      members: new Set([socket.id]),
+      names: { [socket.id]: safeName },
     };
 
     socket.join(code);
@@ -206,25 +185,21 @@ io.on('connection', socket => {
     socket.userName  = safeName;
     socket.sessionId = sessionId;
 
-    // Запоминаем комнату в сессии
     const session = getSession(sessionId);
     if (session) { session.roomCode = code; session.name = safeName; }
 
-    socket.emit('room_created', { code, videoId, videoUrl: safeUrl, type: safeType });
-    console.log(`[ROOM] ${code} (${safeType}) — ${safeName}`);
+    socket.emit('room_created', { code, videoId: video.id, videoUrl: safeUrl, platform: video.platform, type: safeType });
+    console.log(`[ROOM] ${code} (${safeType}) ${video.platform} — ${safeName}`);
   });
 
-  // Войти по коду
   socket.on('join_room', ({ name, code, sessionId }) => {
     const safeName = sanitize(name, 32) || 'Гость';
     const safeCode = sanitize(code, 6).toUpperCase();
     const room = rooms[safeCode];
     if (!room) { socket.emit('error_msg', 'Комната не найдена — проверь код'); return; }
     _joinRoom(socket, room, safeName, sessionId);
-    
   });
 
-  // Войти через список открытых комнат
   socket.on('join_open_room', ({ name, code, sessionId }) => {
     const safeName = sanitize(name, 32) || 'Гость';
     const room = rooms[code];
@@ -232,7 +207,6 @@ io.on('connection', socket => {
     _joinRoom(socket, room, safeName, sessionId);
   });
 
-  // Переподключение после разрыва (по сессии)
   socket.on('rejoin', ({ sessionId }) => {
     const session = getSession(sessionId);
     if (!session || !session.roomCode) { socket.emit('error_msg', 'Сессия не найдена'); return; }
@@ -257,27 +231,22 @@ io.on('connection', socket => {
       code:      room.code,
       videoId:   room.videoId,
       videoUrl:  room.videoUrl,
+      platform:  room.platform,
       state:     room.state,
       time:      room.time,
       count:     room.members.size,
       isHost:    room.hostId === socket.id,
       type:      room.type,
-      memberIds: [...room.members].filter(id => id !== socket.id), // ✅ для WebRTC
+      membersList: [...room.members].filter(id => id !== socket.id).map(id => ({ id, name: room.names[id] })),
     });
 
-    socket.to(room.code).emit('user_joined', { 
-      name:  safeName, 
-      count: room.members.size,
-      id:    socket.id, // ✅ для WebRTC
-    });
+    socket.to(room.code).emit('user_joined', { name: safeName, count: room.members.size, id: socket.id });
     console.log(`[JOIN] ${safeName} → ${room.code}`);
   }
 
-  // Управление плеером (только хост может seek)
   socket.on('player_action', ({ action, time }) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
-    // Перемотку разрешаем только хосту
     if (action === 'seek' && socket.id !== room.hostId) return;
     if (typeof time === 'number' && isFinite(time) && time >= 0) room.time = time;
     if (action === 'play')  room.state = 'playing';
@@ -290,55 +259,48 @@ io.on('connection', socket => {
     const room = rooms[socket.roomCode];
     if (room && socket.id === room.hostId && typeof time === 'number') room.time = time;
   });
+
   socket.on('change_room_type', ({ type }) => {
     const room = rooms[socket.roomCode];
     if (!room || socket.id !== room.hostId) return;
     room.type = type === 'open' ? 'open' : 'closed';
     io.to(socket.roomCode).emit('room_type_changed', { type: room.type, name: socket.userName });
   });
+
   socket.on('chat', ({ text }) => {
     const safeText = sanitize(text, 500);
     if (!safeText || !socket.roomCode) return;
     socket.to(socket.roomCode).emit('chat', { name: socket.userName, text: safeText });
   });
+
   socket.on('mic_start', () => {
-  socket.to(socket.roomCode).emit('mic_start', { from: socket.id, name: socket.userName });
+    socket.to(socket.roomCode).emit('mic_start', { from: socket.id, name: socket.userName });
   });
   socket.on('mic_stop', () => {
     socket.to(socket.roomCode).emit('mic_stop', { from: socket.id });
   });
-  socket.on('rtc_offer', ({ to, offer }) => {
-    io.to(to).emit('rtc_offer', { from: socket.id, offer });
-  });
-  socket.on('rtc_answer', ({ to, answer }) => {
-    io.to(to).emit('rtc_answer', { from: socket.id, answer });
-  });
-  socket.on('rtc_ice', ({ to, candidate }) => {
-    io.to(to).emit('rtc_ice', { from: socket.id, candidate });
-  });
+  socket.on('rtc_offer',  ({ to, offer })     => io.to(to).emit('rtc_offer',  { from: socket.id, offer }));
+  socket.on('rtc_answer', ({ to, answer })    => io.to(to).emit('rtc_answer', { from: socket.id, answer }));
+  socket.on('rtc_ice',    ({ to, candidate }) => io.to(to).emit('rtc_ice',    { from: socket.id, candidate }));
+
   socket.on('disconnect', () => {
     const code = socket.roomCode;
     const room = rooms[code];
     if (!room) return;
-
     room.members.delete(socket.id);
     delete room.names[socket.id];
-
     if (room.hostId === socket.id && room.members.size > 0) {
       room.hostId = [...room.members][0];
       io.to(room.hostId).emit('you_are_host');
     }
-    socket.to(code).emit('user_left', { name: socket.userName, count: room.members.size });
+    socket.to(code).emit('user_left', { name: socket.userName, count: room.members.size, id: socket.id });
     console.log(`[-] ${socket.userName} из ${code}`);
-
     if (room.members.size === 0) {
-      setTimeout(() => {
-        if (rooms[code]?.members.size === 0) { delete rooms[code]; console.log(`[DEL] ${code}`); }
-      }, 600000);
+      setTimeout(() => { if (rooms[code]?.members.size === 0) { delete rooms[code]; console.log(`[DEL] ${code}`); } }, 600000);
     }
   });
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🎬 КиноВместе v4 запущен → http://localhost:${PORT}\n`);
+  console.log(`\n🎬 КиноВместе v5 запущен → http://localhost:${PORT}\n`);
 });

@@ -680,3 +680,52 @@ textarea.chat-inp::-webkit-scrollbar {
 .invite-link-copy:hover { color: var(--accent2); }
 .invite-btns { display: flex; gap: 8px; }
 .invite-btns .btn { flex: 1; font-size: .82rem; padding: 10px; }
+
+
+/* ===== ПЛАТФОРМЫ ===== */
+.platform-grid {
+  display: flex;
+  gap: 8px;
+}
+
+.platform-opt {
+  flex: 1;
+  padding: 12px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.platform-opt:hover:not(.active) { border-color: var(--muted); }
+.platform-opt.active { border-color: var(--accent); background: rgba(232,67,147,.06); }
+
+.platform-logo {
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-align: center;
+}
+
+.rutube-logo  { color: #ff4040; }
+.youtube-logo { color: #ff0000; }
+.vk-logo      { color: #4c75a3; }
+
+.platform-hint {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Иконка платформы в комнате */
+.platform-badge {
+  font-size: .68rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+.platform-badge.rutube  { background: rgba(255,64,64,.15);  color: #ff6060; }
+.platform-badge.youtube { background: rgba(255,0,0,.15);    color: #ff4444; }
+.platform-badge.vk      { background: rgba(76,117,163,.15); color: #6a9fd8; }
