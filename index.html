@@ -14,14 +14,13 @@
   <div class="logo">КиноВместе 🎬</div>
   <p class="tagline">Смотри Rutube с друзьями в реальном времени</p>
 
-  <!-- Табы -->
   <div class="setup-tabs">
     <button class="stab active" onclick="switchTab('create')">✨ Создать</button>
     <button class="stab" onclick="switchTab('join')">🔗 Войти по коду</button>
     <button class="stab" onclick="switchTab('browse')">🌐 Открытые комнаты</button>
   </div>
 
-  <!-- ТАБ: Создать комнату -->
+  <!-- ТАБ: Создать -->
   <div class="tab-panel active" id="tab-create">
     <div class="card wide-card">
       <div class="inp-group">
@@ -32,14 +31,12 @@
         <label>Ссылка на видео Rutube</label>
         <input id="urlCreate" type="text" placeholder="https://rutube.ru/video/..."/>
       </div>
-
-      <!-- Тип комнаты -->
       <div class="room-type-row">
         <div class="room-type-opt active" id="typeOpen" onclick="selectType('open')">
           <div class="rtype-icon">🌐</div>
           <div class="rtype-info">
             <div class="rtype-name">Открытая</div>
-            <div class="rtype-desc">Видна всем в списке комнат</div>
+            <div class="rtype-desc">Видна всем в списке</div>
           </div>
           <div class="rtype-check">✓</div>
         </div>
@@ -52,13 +49,10 @@
           <div class="rtype-check">✓</div>
         </div>
       </div>
-
-      <!-- Название (только для открытой) -->
       <div class="inp-group" id="titleGroup">
         <label>Название комнаты</label>
         <input id="titleCreate" type="text" placeholder="Например: смотрим аниме 🍿" maxlength="60"/>
       </div>
-
       <button class="btn btn-primary" id="createBtn" onclick="createRoom()">✨ Создать комнату</button>
     </div>
   </div>
@@ -101,7 +95,6 @@
       </div>
     </div>
   </div>
-
 </div>
 
 <!-- ===== CODE POPUP ===== -->
@@ -115,6 +108,37 @@
       <button class="btn btn-copy" onclick="copyCode()">📋 Код</button>
       <button class="btn btn-copy" onclick="copyLink()">🔗 Ссылка</button>
       <button class="btn btn-watch" onclick="closePopup()">▶ Смотреть!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INVITE POPUP ===== -->
+<div id="invitePopup">
+  <div class="invite-popup-card" onclick="stopEv(event)">
+    <div class="invite-popup-title">Пригласить друзей</div>
+    <div class="invite-type-row" id="inviteTypeRow">
+      <div class="invite-type-opt active" id="iTypeOpen" onclick="changeRoomType('open')">
+        <div class="invite-type-icon">🌐</div>
+        <div class="invite-type-name">Публичная</div>
+      </div>
+      <div class="invite-type-opt" id="iTypeClosed" onclick="changeRoomType('closed')">
+        <div class="invite-type-icon">🔒</div>
+        <div class="invite-type-name">Приватная</div>
+      </div>
+    </div>
+    <div class="invite-host-only" id="inviteHostOnly" style="display:none">
+      <span>⚠️ Только хост может менять тип</span>
+    </div>
+    <div class="invite-link-box">
+      <div class="invite-link-label">Приглашение</div>
+      <div class="invite-link-row">
+        <span class="invite-link-text" id="inviteLinkText"></span>
+        <button class="invite-link-copy" onclick="copyInviteLink()">📋</button>
+      </div>
+    </div>
+    <div class="invite-btns">
+      <button class="btn btn-copy" onclick="shareRoom()">🔗 Поделиться</button>
+      <button class="btn btn-watch" onclick="closeInvitePopup()">Закрыть</button>
     </div>
   </div>
 </div>
@@ -140,10 +164,8 @@
     <!-- Видео -->
     <div class="video-side">
       <div class="video-wrap" id="videoWrap">
-
         <video id="videoEl" playsinline></video>
 
-        <!-- Оверлей управления (клик = play/pause) -->
         <div class="vid-overlay" id="vidOverlay" onclick="togglePlay()">
           <div class="big-play" id="bigPlay">▶</div>
           <div class="vid-progress-wrap" onclick="stopEv(event)">
@@ -167,27 +189,22 @@
           </div>
         </div>
 
-        <!-- Загрузка -->
         <div class="vid-loading show" id="vidLoading">
           <div class="big-spinner"></div>
           <p>Загружаем видео...</p>
         </div>
 
-        <!-- Ошибка -->
         <div class="vid-error" id="vidError">
           <div class="icon">😕</div>
           <p id="vidErrorText">Не удалось загрузить видео</p>
         </div>
-
       </div>
 
-      <!-- Нижняя панель с URL -->
       <div class="bottom-bar">
         <span class="ctrl-url" id="urlDisplay"></span>
         <button class="logs-toggle-btn" onclick="toggleLogs()" title="Логи событий">•••</button>
       </div>
 
-      <!-- Панель логов (скрыта по умолчанию) -->
       <div class="logs-panel" id="logsPanel">
         <div class="logs-hdr">
           <span>Логи событий</span>
@@ -203,7 +220,18 @@
         ЧАТ <span class="msg-count" id="msgCount">0</span>
       </div>
       <div class="msgs" id="msgs"></div>
+
       <div class="chat-inp-area">
+
+        <!-- Дропдаун упоминаний -->
+        <div class="mention-dropdown" id="mentionDropdown"></div>
+
+        <!-- Эмодзи пикер -->
+        <div class="emoji-picker" id="emojiPicker">
+          <div class="emoji-grid" id="emojiGrid"></div>
+        </div>
+
+        <!-- Строка ввода -->
         <div class="chat-inp-wrap">
           <textarea class="chat-inp" id="chatInp"
             placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
@@ -214,11 +242,6 @@
             <button class="chat-act-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
           </div>
           <button class="send-btn" onclick="sendMsg()">➤</button>
-        </div>
-
-        <!-- Эмодзи пикер -->
-        <div class="emoji-picker" id="emojiPicker">
-          <div class="emoji-grid" id="emojiGrid"></div>
         </div>
 
         <!-- Большая кнопка микрофона -->
@@ -233,51 +256,17 @@
           </button>
           <span class="mic-hint" id="micHint">Нажми · Держи для записи</span>
         </div>
+
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
 </body>
-<!-- INVITE POPUP -->
-<div id="invitePopup">
-  <div class="invite-popup-card" onclick="stopEv(event)">
-    <div class="invite-popup-title">Пригласить друзей</div>
-
-    <div class="invite-type-row" id="inviteTypeRow">
-      <div class="invite-type-opt active" id="iTypeOpen" onclick="changeRoomType('open')">
-        <div class="invite-type-icon">🌐</div>
-        <div class="invite-type-name">Публичная</div>
-      </div>
-      <div class="invite-type-opt" id="iTypeClosed" onclick="changeRoomType('closed')">
-        <div class="invite-type-icon">🔒</div>
-        <div class="invite-type-name">Приватная</div>
-      </div>
-    </div>
-
-    <div class="invite-host-only" id="inviteHostOnly" style="display:none">
-      <span>⚠️ Только хост может менять тип</span>
-    </div>
-
-    <div class="invite-link-box">
-      <div class="invite-link-label">Приглашение</div>
-      <div class="invite-link-row">
-        <span class="invite-link-text" id="inviteLinkText"></span>
-        <button class="invite-link-copy" onclick="copyInviteLink()">📋</button>
-      </div>
-    </div>
-
-    <div class="invite-btns">
-      <button class="btn btn-copy" onclick="shareRoom()">🔗 Поделиться</button>
-      <button class="btn btn-watch" onclick="closeInvitePopup()">Закрыть</button>
-    </div>
-  </div>
-</div>
 </html>

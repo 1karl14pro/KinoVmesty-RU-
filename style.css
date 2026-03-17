@@ -17,66 +17,39 @@ html, body { height: 100%; font-family: 'Nunito', sans-serif; background: var(--
 /* ===== SETUP ===== */
 #setup {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 28px 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; padding: 28px 16px;
   background: radial-gradient(ellipse 80% 50% at 50% -10%, #2a1040 0%, transparent 70%);
 }
 
 .logo {
-  font-family: 'Unbounded', sans-serif;
-  font-size: 2rem;
-  font-weight: 600;
+  font-family: 'Unbounded', sans-serif; font-size: 2rem; font-weight: 600;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -1px;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;
 }
-
 .tagline { color: var(--muted); font-size: .86rem; text-align: center; max-width: 400px; line-height: 1.6; }
 
 /* ───── Табы ───── */
 .setup-tabs {
-  display: flex;
-  gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 5px;
+  display: flex; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 5px;
 }
 .stab {
-  padding: 8px 18px;
-  border-radius: 10px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-family: 'Nunito', sans-serif;
-  font-size: .82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .2s;
-  white-space: nowrap;
+  padding: 8px 18px; border-radius: 10px; border: none;
+  background: transparent; color: var(--muted);
+  font-family: 'Nunito', sans-serif; font-size: .82rem; font-weight: 700;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
 }
 .stab.active { background: var(--surface2); color: var(--text); }
 .stab:hover:not(.active) { color: var(--text); }
 
-/* ───── Панели табов ───── */
 .tab-panel { display: none; width: 100%; max-width: 540px; }
 .tab-panel.active { display: flex; flex-direction: column; }
 
 /* ───── Карточка ───── */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 14px;
 }
 .wide-card { width: 100%; }
 
@@ -85,32 +58,22 @@ html, body { height: 100%; font-family: 'Nunito', sans-serif; background: var(--
 .inp-group label { font-size: .7rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 
 input[type=text] {
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 11px 14px;
-  color: var(--text);
-  font-family: 'Nunito', sans-serif;
-  font-size: .9rem;
-  outline: none;
-  transition: border-color .2s;
-  width: 100%;
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 11px 14px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: .9rem;
+  outline: none; transition: border-color .2s; width: 100%;
 }
 input[type=text]:focus { border-color: var(--accent); }
-input::placeholder     { color: var(--muted); }
+input::placeholder { color: var(--muted); }
 
 .invite-wrap { position: relative; }
 .invite-wrap input {
-  font-family: 'Unbounded', sans-serif;
-  font-size: 1.1rem;
-  letter-spacing: 4px;
-  padding: 13px 44px 13px 14px;
-  text-transform: uppercase;
+  font-family: 'Unbounded', sans-serif; font-size: 1.1rem;
+  letter-spacing: 4px; padding: 13px 44px 13px 14px; text-transform: uppercase;
 }
 .invite-paste-btn {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  font-size: .85rem; color: var(--muted); transition: color .2s;
+  background: none; border: none; cursor: pointer; font-size: .85rem; color: var(--muted); transition: color .2s;
 }
 .invite-paste-btn:hover { color: var(--accent2); }
 .invite-hint   { font-size: .7rem; color: var(--muted); }
@@ -119,45 +82,32 @@ input::placeholder     { color: var(--muted); }
 /* ───── Тип комнаты ───── */
 .room-type-row { display: flex; gap: 10px; }
 .room-type-opt {
-  flex: 1; display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all .2s;
-  position: relative;
+  flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: 12px; cursor: pointer; transition: all .2s; position: relative;
 }
 .room-type-opt.active { border-color: var(--accent); background: rgba(232,67,147,.06); }
 .room-type-opt:hover:not(.active) { border-color: var(--muted); }
-.rtype-icon  { font-size: 1.4rem; line-height: 1; }
-.rtype-name  { font-size: .85rem; font-weight: 700; }
-.rtype-desc  { font-size: .72rem; color: var(--muted); margin-top: 2px; }
-.rtype-check {
-  position: absolute; top: 8px; right: 10px;
-  font-size: .7rem; color: var(--accent);
-  opacity: 0; transition: opacity .2s;
-}
+.rtype-icon { font-size: 1.4rem; line-height: 1; }
+.rtype-name { font-size: .85rem; font-weight: 700; }
+.rtype-desc { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.rtype-check { position: absolute; top: 8px; right: 10px; font-size: .7rem; color: var(--accent); opacity: 0; transition: opacity .2s; }
 .room-type-opt.active .rtype-check { opacity: 1; }
 
 /* ───── Список открытых комнат ───── */
 .rooms-list-wrap { display: flex; flex-direction: column; gap: 8px; }
-.rooms-list-hdr  {
+.rooms-list-hdr {
   display: flex; justify-content: space-between; align-items: center;
   font-size: .78rem; color: var(--muted); font-weight: 700;
 }
 .refresh-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--muted); transition: color .2s; }
 .refresh-btn:hover { color: var(--accent2); }
-.rooms-list  { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.rooms-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
 .rooms-empty { text-align: center; color: var(--muted); font-size: .82rem; padding: 24px; }
 
 .room-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all .2s;
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+  cursor: pointer; transition: all .2s;
 }
 .room-item:hover { border-color: var(--green); }
 .room-item-icon  { font-size: 1.4rem; }
@@ -177,6 +127,10 @@ input::placeholder     { color: var(--muted); }
 .btn-yellow  { background: linear-gradient(135deg, #ffd166, #f4a500); color: #0c0d12; }
 .btn-yellow:hover  { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,209,102,.3); }
 .btn:disabled { opacity: .35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.btn-copy  { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+.btn-copy:hover  { border-color: var(--accent2); color: var(--accent2); }
+.btn-copy.copied { border-color: var(--green) !important; color: var(--green) !important; }
+.btn-watch { background: linear-gradient(135deg, var(--green), #04b384); color: #0c0d12; }
 
 .spinner {
   display: inline-block; width: 14px; height: 14px; border-radius: 50%;
@@ -206,32 +160,24 @@ input::placeholder     { color: var(--muted); }
   font-family: 'Unbounded', sans-serif; font-size: 2.4rem; font-weight: 600;
   letter-spacing: 8px; text-align: center;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  padding: 8px 0;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 8px 0;
 }
 .popup-type-badge {
-  font-size: .78rem; font-weight: 700;
-  padding: 4px 14px; border-radius: 99px;
+  font-size: .78rem; font-weight: 700; padding: 4px 14px; border-radius: 99px;
   background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
 }
 .popup-type-badge.open   { border-color: var(--green);   color: var(--green);   }
 .popup-type-badge.closed { border-color: var(--accent2); color: var(--accent2); }
-
 .popup-hint { font-size: .82rem; color: var(--muted); text-align: center; line-height: 1.5; }
 .popup-btns { display: flex; gap: 8px; width: 100%; }
 .popup-btns .btn { flex: 1; font-size: .85rem; padding: 10px; }
-.btn-copy { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
-.btn-copy:hover  { border-color: var(--accent2); color: var(--accent2); }
-.btn-copy.copied { border-color: var(--green) !important; color: var(--green) !important; }
-.btn-watch { background: linear-gradient(135deg, var(--green), #04b384); color: #0c0d12; }
 
 /* ===== APP ===== */
 #app { display: none; height: 100vh; flex-direction: column; overflow: hidden; }
 
 .topbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 16px; background: var(--surface);
-  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 .logo-sm {
   font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 600;
@@ -246,9 +192,8 @@ input::placeholder     { color: var(--muted); }
 }
 .room-code-badge:hover { border-color: var(--accent2); }
 .room-type-pill {
-  font-size: .75rem; padding: 3px 8px;
-  border-radius: 99px; border: 1px solid var(--border);
-  background: var(--surface2); color: var(--muted);
+  font-size: .75rem; padding: 3px 8px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: all .3s; }
 .dot.on { background: var(--green); box-shadow: 0 0 8px rgba(6,214,160,.5); }
@@ -256,7 +201,13 @@ input::placeholder     { color: var(--muted); }
 .members-count { font-size: .72rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; }
 .host-badge    { font-size: .68rem; color: var(--accent2); background: var(--surface2); border: 1px solid #ffd16640; border-radius: 6px; padding: 3px 9px; display: none; }
 .host-badge.show { display: inline; }
-.spacer   { flex: 1; }
+.spacer { flex: 1; }
+.share-btn {
+  padding: 5px 12px; border: 1px solid var(--green); border-radius: 8px;
+  background: transparent; color: var(--green);
+  font-family: 'Nunito', sans-serif; font-size: .75rem; cursor: pointer; transition: all .2s;
+}
+.share-btn:hover { background: rgba(6,214,160,.1); }
 .exit-btn {
   padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px;
   background: transparent; color: var(--muted);
@@ -297,26 +248,20 @@ input::placeholder     { color: var(--muted); }
   padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px;
 }
 .vid-progress {
-  width: 100%; height: 4px; background: rgba(255,255,255,.2);
-  border-radius: 2px; cursor: pointer;
+  width: 100%; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; cursor: pointer;
   appearance: none; -webkit-appearance: none; accent-color: var(--accent);
 }
-/* Скрываем прогресс-бар для не-хостов */
 .vid-progress.guest-mode { pointer-events: none; opacity: .5; cursor: default; }
-
 .vid-bottom-row { display: flex; align-items: center; gap: 10px; }
 .vid-time       { font-size: .72rem; color: rgba(255,255,255,.7); white-space: nowrap; }
 .vid-spacer     { flex: 1; }
-
 .vol-wrap { display: flex; align-items: center; gap: 6px; }
 .vol-btn  { background: none; border: none; cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px; opacity: .85; transition: opacity .15s; }
 .vol-btn:hover { opacity: 1; }
 .vol-slider {
-  width: 70px; height: 4px; background: rgba(255,255,255,.2);
-  border-radius: 2px; cursor: pointer;
+  width: 70px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; cursor: pointer;
   appearance: none; -webkit-appearance: none; accent-color: var(--green);
 }
-
 .fs-btn { background: none; border: none; cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px; opacity: .85; transition: opacity .15s; }
 .fs-btn:hover { opacity: 1; }
 
@@ -326,13 +271,12 @@ input::placeholder     { color: var(--muted); }
   background: rgba(0,0,0,.6); flex-direction: column; gap: 12px;
 }
 .vid-loading.show { display: flex; }
-.vid-loading p    { font-size: .85rem; color: var(--muted); }
+.vid-loading p { font-size: .85rem; color: var(--muted); }
 .big-spinner {
   width: 40px; height: 40px; border-radius: 50%;
   border: 3px solid var(--border); border-top-color: var(--accent);
   animation: spin .8s linear infinite;
 }
-
 .vid-error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; padding: 20px; text-align: center; }
 .vid-error.show { display: flex; }
 .vid-error .icon { font-size: 2.5rem; }
@@ -340,42 +284,32 @@ input::placeholder     { color: var(--muted); }
 
 /* ───── Нижняя панель ───── */
 .bottom-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px; background: var(--surface);
-  border-top: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
 }
 .ctrl-url { flex: 1; font-size: .7rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logs-toggle-btn {
   padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--surface2); color: var(--muted);
-  font-family: 'Nunito', sans-serif; font-size: .8rem; cursor: pointer; transition: all .2s;
-  letter-spacing: 2px;
+  font-family: 'Nunito', sans-serif; font-size: .8rem; cursor: pointer; transition: all .2s; letter-spacing: 2px;
 }
 .logs-toggle-btn:hover  { border-color: var(--accent); color: var(--accent); }
 .logs-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,67,147,.08); }
 
-/* ───── Панель логов ───── */
+/* ───── Логи ───── */
 .logs-panel {
-  display: none; flex-direction: column;
-  max-height: 140px; background: var(--bg);
-  border-top: 1px solid var(--border); flex-shrink: 0;
+  display: none; flex-direction: column; max-height: 140px;
+  background: var(--bg); border-top: 1px solid var(--border); flex-shrink: 0;
 }
 .logs-panel.show { display: flex; }
 .logs-hdr {
   display: flex; justify-content: space-between; align-items: center;
   padding: 6px 14px; border-bottom: 1px solid var(--border);
-  font-size: .68rem; color: var(--muted); font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase;
+  font-size: .68rem; color: var(--muted); font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
 }
-.logs-hdr button {
-  background: none; border: none; cursor: pointer;
-  font-size: .68rem; color: var(--muted); transition: color .2s;
-}
+.logs-hdr button { background: none; border: none; cursor: pointer; font-size: .68rem; color: var(--muted); transition: color .2s; }
 .logs-hdr button:hover { color: var(--accent); }
-.logs-body {
-  flex: 1; overflow-y: auto; padding: 6px 14px;
-  display: flex; flex-direction: column; gap: 3px;
-}
+.logs-body { flex: 1; overflow-y: auto; padding: 6px 14px; display: flex; flex-direction: column; gap: 3px; }
 .logs-body::-webkit-scrollbar { width: 3px; }
 .logs-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .log-entry { font-size: .72rem; color: var(--muted); line-height: 1.4; }
@@ -394,15 +328,12 @@ input::placeholder     { color: var(--muted); }
 .sidebar-hdr {
   padding: 12px 16px; border-bottom: 1px solid var(--border);
   font-family: 'Unbounded', sans-serif; font-size: .65rem; font-weight: 400;
-  color: var(--muted); letter-spacing: 1.5px;
-  display: flex; align-items: center; gap: 8px;
+  color: var(--muted); letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;
 }
 .msg-count {
   background: var(--accent); color: #fff; border-radius: 99px;
-  padding: 1px 7px; font-size: .62rem;
-  font-family: 'Nunito', sans-serif; font-weight: 700;
+  padding: 1px 7px; font-size: .62rem; font-family: 'Nunito', sans-serif; font-weight: 700;
 }
-
 .msgs {
   flex: 1; overflow-y: auto; padding: 10px;
   display: flex; flex-direction: column; gap: 6px; scroll-behavior: smooth;
@@ -419,24 +350,120 @@ input::placeholder     { color: var(--muted); }
   padding: 7px 11px; border-radius: 13px;
   font-size: .83rem; max-width: 88%; line-height: 1.45; word-break: break-word;
 }
-.msg.me    .bubble { background: var(--accent);   color: #fff; border-bottom-right-radius: 3px; }
+.msg.me    .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
 .msg.other .bubble { background: var(--surface2); border-bottom-left-radius: 3px; }
 .msg.sys   .bubble { background: transparent; color: var(--muted); font-size: .71rem; font-style: italic; padding: 3px 6px; }
 .msg-meta { font-size: .65rem; color: var(--muted); padding: 0 4px; }
 
-.chat-inp-area { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 7px; align-items: flex-end; }
+/* ───── Упоминания ───── */
+.mention {
+  background: rgba(232,67,147,.18); color: var(--accent);
+  border-radius: 4px; padding: 1px 4px; font-weight: 700;
+}
+.mention-me {
+  background: rgba(255,209,102,.2); color: var(--accent2);
+}
+
+/* ───── Дропдаун упоминаний ───── */
+.mention-dropdown {
+  display: none; position: absolute; bottom: 100%; left: 10px; right: 10px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; max-height: 180px; overflow-y: auto;
+  box-shadow: 0 -8px 24px rgba(0,0,0,.4); z-index: 50;
+}
+.mention-dropdown.show { display: block; }
+.mention-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; cursor: pointer; transition: background .15s; font-size: .85rem;
+}
+.mention-item:hover { background: var(--border); }
+.mention-avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700; color: #fff;
+}
+
+/* ===== CHAT INPUT ===== */
+.chat-inp-area {
+  padding: 10px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+  position: relative;
+}
+
+.chat-inp-wrap {
+  display: flex; align-items: flex-end; gap: 7px; position: relative;
+}
+.chat-inp-wrap textarea {
+  flex: 1; padding-right: 68px;
+}
+.chat-inp-actions {
+  position: absolute; right: 46px; bottom: 8px;
+  display: flex; gap: 2px;
+}
+.chat-act-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: .88rem; color: var(--muted);
+  padding: 3px 5px; border-radius: 6px; transition: all .15s;
+  font-family: 'Nunito', sans-serif; font-weight: 700;
+}
+.chat-act-btn:hover { color: var(--accent); background: rgba(232,67,147,.08); }
+
 textarea.chat-inp {
-  flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
   padding: 9px 12px; color: var(--text); font-family: 'Nunito', sans-serif;
   font-size: .83rem; outline: none; resize: none; max-height: 90px; line-height: 1.4; transition: border-color .2s;
 }
 textarea.chat-inp:focus { border-color: var(--accent); }
+
 .send-btn {
   padding: 9px 12px; background: var(--accent); border: none;
   border-radius: 10px; color: #fff; cursor: pointer; font-size: .88rem;
   transition: all .18s; flex-shrink: 0;
 }
 .send-btn:hover { transform: scale(1.06); }
+
+/* ───── Эмодзи пикер ───── */
+.emoji-picker {
+  display: none;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 8px; max-height: 160px; overflow-y: auto;
+}
+.emoji-picker.show { display: block; }
+.emoji-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+}
+.emoji-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.25rem; padding: 5px 2px; border-radius: 6px;
+  transition: background .12s; line-height: 1; text-align: center;
+}
+.emoji-btn:hover { background: var(--border); }
+
+/* ───── Большая кнопка микрофона ───── */
+.mic-area {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 8px 0 2px; border-top: 1px solid var(--border);
+}
+.mic-big-btn {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface2); color: var(--muted);
+  font-size: 1.4rem; cursor: pointer; flex-shrink: 0;
+  transition: all .15s; display: flex; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+}
+.mic-big-btn:hover { border-color: var(--accent); color: var(--accent); }
+.mic-big-btn.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(232,67,147,.6);
+  animation: pulse-mic .8s ease infinite;
+}
+@keyframes pulse-mic {
+  0%, 100% { box-shadow: 0 0 14px rgba(232,67,147,.5); }
+  50%       { box-shadow: 0 0 28px rgba(232,67,147,.9); }
+}
+.mic-hint { font-size: .63rem; color: var(--muted); text-align: center; }
 
 /* ===== TOAST ===== */
 #toast {
@@ -453,31 +480,6 @@ textarea.chat-inp:focus { border-color: var(--accent); }
 #toast.copy  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 #toast.err   { background: #e24b4a; color: #fff; }
 
-.share-btn {
-  padding: 5px 12px; border: 1px solid var(--green); border-radius: 8px;
-  background: transparent; color: var(--green);
-  font-family: 'Nunito', sans-serif; font-size: .75rem; cursor: pointer; transition: all .2s;
-}
-.share-btn:hover { background: rgba(6,214,160,.1); }
-
-.mic-btn {
-  width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--border);
-  background: var(--surface2); color: var(--muted);
-  font-size: 1rem; cursor: pointer; flex-shrink: 0;
-  transition: all .15s; display: flex; align-items: center; justify-content: center;
-  user-select: none; -webkit-user-select: none;
-}
-.mic-btn:hover { border-color: var(--accent); color: var(--accent); }
-.mic-btn.active {
-  background: var(--accent); color: #fff; border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(232,67,147,.5);
-  animation: pulse-mic .8s ease infinite;
-}
-@keyframes pulse-mic {
-  0%, 100% { box-shadow: 0 0 14px rgba(232,67,147,.5); }
-  50%       { box-shadow: 0 0 24px rgba(232,67,147,.8); }
-}
-
 /* ===== INVITE POPUP ===== */
 #invitePopup {
   display: none; position: fixed; inset: 0; z-index: 200;
@@ -489,8 +491,7 @@ textarea.chat-inp:focus { border-color: var(--accent); }
 .invite-popup-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
   padding: 24px; max-width: 360px; width: calc(100% - 32px);
-  display: flex; flex-direction: column; gap: 16px;
-  animation: popIn .25s ease;
+  display: flex; flex-direction: column; gap: 16px; animation: popIn .25s ease;
 }
 .invite-popup-title {
   font-family: 'Unbounded', sans-serif; font-size: .75rem;
@@ -528,63 +529,3 @@ textarea.chat-inp:focus { border-color: var(--accent); }
 .invite-link-copy:hover { color: var(--accent2); }
 .invite-btns { display: flex; gap: 8px; }
 .invite-btns .btn { flex: 1; font-size: .82rem; padding: 10px; }
-
-
-/* ===== НОВЫЙ ЧАТ-ИНПУТ ===== */
-.chat-inp-wrap {
-  display: flex; align-items: flex-end; gap: 7px;
-  position: relative;
-}
-.chat-inp-wrap .chat-inp { flex: 1; padding-right: 70px; }
-.chat-inp-actions {
-  position: absolute; right: 48px; bottom: 8px;
-  display: flex; gap: 4px;
-}
-.chat-act-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: .9rem; color: var(--muted);
-  padding: 3px 5px; border-radius: 6px; transition: all .15s;
-  font-family: 'Nunito', sans-serif; font-weight: 700;
-}
-.chat-act-btn:hover { color: var(--accent); background: rgba(232,67,147,.08); }
-
-/* Эмодзи пикер */
-.emoji-picker {
-  display: none; background: var(--surface2);
-  border: 1px solid var(--border); border-radius: 14px;
-  padding: 10px; margin-bottom: 4px;
-}
-.emoji-picker.show { display: block; }
-.emoji-grid {
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
-}
-.emoji-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: 1.2rem; padding: 5px; border-radius: 8px;
-  transition: background .15s; line-height: 1;
-}
-.emoji-btn:hover { background: var(--border); }
-
-/* Большая кнопка микрофона */
-.mic-area {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 6px; padding: 10px 0 4px;
-  border-top: 1px solid var(--border);
-}
-.mic-big-btn {
-  width: 56px; height: 56px; border-radius: 50%;
-  border: 2px solid var(--border);
-  background: var(--surface2); color: var(--muted);
-  font-size: 1.5rem; cursor: pointer; flex-shrink: 0;
-  transition: all .15s; display: flex; align-items: center; justify-content: center;
-  user-select: none; -webkit-user-select: none;
-}
-.mic-big-btn:hover { border-color: var(--accent); color: var(--accent); }
-.mic-big-btn.active {
-  background: var(--accent); color: #fff; border-color: var(--accent);
-  box-shadow: 0 0 20px rgba(232,67,147,.6);
-  animation: pulse-mic .8s ease infinite;
-}
-.mic-hint {
-  font-size: .65rem; color: var(--muted); text-align: center;
-}

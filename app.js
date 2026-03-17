@@ -1,5 +1,5 @@
 // ============================================================
-//  КиноВместе — app.js v4
+//  КиноВместе — app.js v5
 // ============================================================
 
 const socket = io();
@@ -40,12 +40,11 @@ async function initSession(name) {
   });
   const data = await resp.json();
   setCookie('kv_session', data.sessionId);
-  return data; // { sessionId, name, roomCode }
+  return data;
 }
 
 let mySessionId = getCookie('kv_session') || null;
 
-// Проверяем сессию при загрузке страницы
 window.addEventListener('DOMContentLoaded', async () => {
   if (mySessionId) {
     try {
@@ -58,13 +57,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (data.sessionId) {
         mySessionId = data.sessionId;
         setCookie('kv_session', mySessionId);
-        // Подставляем ник в поля
         if (data.name) {
           document.getElementById('nameCreate').value = data.name;
           document.getElementById('nameJoin').value   = data.name;
           document.getElementById('nameBrowse').value = data.name;
         }
-        // Если был в комнате — предлагаем вернуться
         if (data.roomCode) {
           socket.emit('auth', { sessionId: mySessionId });
         }
@@ -73,11 +70,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       console.warn('Ошибка проверки сессии:', e);
     }
   }
-  // Загружаем открытые комнаты при открытии таба browse
   loadOpenRooms();
+
+  // Авто-вход по ссылке /?room=ABC123
+  const params = new URLSearchParams(location.search);
+  const roomFromUrl = params.get('room');
+  if (roomFromUrl) {
+    switchTab('join');
+    document.getElementById('codeInput').value = roomFromUrl.toUpperCase();
+  }
 });
 
-// Сервер говорит что сессия найдена и была в комнате
 socket.on('session_restore', ({ roomCode, name }) => {
   const banner = document.createElement('div');
   banner.style.cssText = `
@@ -99,9 +102,7 @@ function rejoinRoom(roomCode) {
   socket.emit('rejoin', { sessionId: mySessionId });
 }
 
-socket.on('auth_ok', ({ name }) => {
-  // Просто обновляем поля
-});
+socket.on('auth_ok', () => {});
 
 // ============================================================
 //  ТАБЫ ГЛАВНОГО МЕНЮ
@@ -115,29 +116,26 @@ function switchTab(tab) {
   if (tab === 'browse') loadOpenRooms();
 }
 
-// ─── Тип комнаты ─────────────────────────────────────────────────────────────
 function selectType(type) {
   selectedType = type;
   document.getElementById('typeOpen').classList.toggle('active',   type === 'open');
   document.getElementById('typeClosed').classList.toggle('active', type === 'closed');
   document.getElementById('titleGroup').style.display = type === 'open' ? 'flex' : 'none';
 }
-// По умолчанию открытая
 selectType('open');
 
-// ─── Список открытых комнат ──────────────────────────────────────────────────
 async function loadOpenRooms() {
   const list = document.getElementById('roomsList');
   list.innerHTML = '<div class="rooms-empty">Загружаем...</div>';
   try {
     const resp  = await fetch('/api/rooms');
-    const rooms = await resp.json();
-    if (!rooms.length) {
+    const data  = await resp.json();
+    if (!data.length) {
       list.innerHTML = '<div class="rooms-empty">Открытых комнат пока нет 🌚<br>Создай первую!</div>';
       return;
     }
     list.innerHTML = '';
-    rooms.forEach(r => {
+    data.forEach(r => {
       const item = document.createElement('div');
       item.className = 'room-item';
       item.innerHTML = `
@@ -157,7 +155,6 @@ async function loadOpenRooms() {
 
 function joinOpenRoom(code) {
   const name = document.getElementById('nameBrowse').value.trim() || 'Гость';
-  setBtn('', true, '');
   socket.emit('join_open_room', { name, code, sessionId: mySessionId });
 }
 
@@ -206,56 +203,53 @@ async function pasteCode() {
   } catch (e) { toast('Вставь вручную: Ctrl+V', 'info'); }
 }
 
-// ─── Вход в приложение ───────────────────────────────────────────────────────
 function enterApp(code, type) {
-  myRoom    = code;
-  roomType  = type;
-  document.getElementById('topCode').textContent  = code;
-  document.getElementById('topType').textContent  = type === 'open' ? '🌐 Открытая' : '🔒 Закрытая';
-  document.getElementById('setup').style.display  = 'none';
-  document.getElementById('app').style.display    = 'flex';
+  myRoom   = code;
+  roomType = type;
+  document.getElementById('topCode').textContent = code;
+  document.getElementById('topType').textContent = type === 'open' ? '🌐 Открытая' : '🔒 Закрытая';
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('app').style.display   = 'flex';
 }
 
 socket.on('room_created', ({ code, videoId, videoUrl, type }) => {
   isHost = true;
   setBtn('createBtn', false, '✨ Создать комнату');
   enterApp(code, type);
-  // Попап с кодом
   document.getElementById('bigCode').textContent = code;
   const badge = document.getElementById('popupTypeBadge');
   badge.textContent = type === 'open' ? '🌐 Открытая — видна всем' : '🔒 Закрытая — только по коду';
   badge.className   = 'popup-type-badge ' + type;
   document.getElementById('codePopup').classList.add('show');
   document.getElementById('hostBadge').classList.add('show');
+  roomMembers['me'] = myName;
   loadVideo(videoId, videoUrl);
   addLog('Комната создана', 'sys');
 });
 
-socket.on('room_joined', async ({ code, videoId, videoUrl, state, time, count, isHost: host, type }) => {
+socket.on('room_joined', async ({ code, videoId, videoUrl, state, time, count, isHost: host, type, membersList }) => {
   isHost = host;
   setBtn('joinBtn', false, '🚀 Войти в комнату');
   enterApp(code, type);
   membersN = count;
   updateMembers();
   if (isHost) document.getElementById('hostBadge').classList.add('show');
-  // Гость не может перематывать
-  if (!isHost) {
-    document.getElementById('vidProgress').classList.add('guest-mode');
-  }
+  if (!isHost) document.getElementById('vidProgress').classList.add('guest-mode');
+
+  // Заполняем список участников
+  roomMembers['me'] = myName;
+  if (membersList) membersList.forEach(m => { roomMembers[m.id] = m.name; });
+
   await loadVideo(videoId, videoUrl);
 
-  // Синхронизация времени
   if (time > 1) {
     const syncTime = () => {
       video.currentTime = time;
       if (state === 'playing') video.play().catch(() => {});
       video.removeEventListener('canplay', syncTime);
     };
-    if (video.readyState >= 3) {
-      syncTime();
-    } else {
-      video.addEventListener('canplay', syncTime);
-    }
+    if (video.readyState >= 3) syncTime();
+    else video.addEventListener('canplay', syncTime);
   } else {
     if (state === 'playing') video.play().catch(() => {});
   }
@@ -273,6 +267,51 @@ socket.on('you_are_host', () => {
   document.getElementById('vidProgress').classList.remove('guest-mode');
   toast('👑 Ты теперь хост!', 'info');
   addLog('👑 Ты теперь хозяин комнаты', 'sys');
+});
+
+// ============================================================
+//  ПОЛЬЗОВАТЕЛИ (объединённые обработчики)
+// ============================================================
+
+socket.on('user_joined', ({ name, count, id }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} присоединился 👋`, 'sys');
+  toast(`${esc(name)} в комнате!`, 'info');
+  addLog(`${esc(name)} вошёл в комнату`, 'sys');
+  if (id) {
+    roomMembers[id] = name;
+    memberIds.push(id);
+  }
+});
+
+socket.on('user_left', ({ name, count, id }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} вышел 👋`, 'sys');
+  addLog(`${esc(name)} вышел`, 'sys');
+  if (id) {
+    delete roomMembers[id];
+    memberIds = memberIds.filter(i => i !== id);
+    if (peerConns[id]) { peerConns[id].close(); delete peerConns[id]; }
+    if (remoteAudios[id]) { remoteAudios[id].remove(); delete remoteAudios[id]; }
+  }
+});
+
+socket.on('error_msg', msg => {
+  toast(msg, 'err');
+  setBtn('createBtn', false, '✨ Создать комнату');
+  setBtn('joinBtn',   false, '🚀 Войти в комнату');
+});
+
+socket.on('disconnect', () => {
+  document.getElementById('dot').classList.remove('on');
+  document.getElementById('statusTxt').textContent = 'Соединение потеряно...';
+  addLog('Соединение потеряно', 'sys');
+});
+
+socket.on('connect', () => {
+  document.getElementById('dot').classList.add('on');
+  document.getElementById('statusTxt').textContent = 'Онлайн';
+  if (mySessionId && myRoom) socket.emit('rejoin', { sessionId: mySessionId });
 });
 
 // ============================================================
@@ -353,7 +392,6 @@ function togglePlay() {
 
 function playerAction(action) {
   const time = video.currentTime || 0;
-
   if (action === 'play') {
     video.play();
     document.getElementById('bigPlay').textContent = '⏸';
@@ -364,11 +402,9 @@ function playerAction(action) {
     document.getElementById('bigPlay').textContent = '▶';
     addLog('⏸ Ты поставил паузу', 'pause');
   }
-
   socket.emit('player_action', { action, time });
 }
 
-// Перемотка — только хост
 function onSeekInput(el) {
   if (!isHost) return;
   isSeeking = true;
@@ -384,7 +420,6 @@ function onSeekChange(el) {
   addLog(`🔄 Перемотка на ${fmtTime(t)}`, 'seek');
 }
 
-// Получаем команду от другого
 socket.on('player_action', ({ action, time, name }) => {
   if (action === 'play') {
     video.play();
@@ -435,7 +470,7 @@ function updateVolBtn() {
 function toggleFullscreen() {
   const wrap = document.getElementById('videoWrap');
   if (!document.fullscreenElement) {
-    wrap.requestFullscreen().catch(e => toast('Фуллскрин недоступен', 'err'));
+    wrap.requestFullscreen().catch(() => toast('Фуллскрин недоступен', 'err'));
   } else {
     document.exitFullscreen();
   }
@@ -482,32 +517,19 @@ function sendMsg() {
   socket.emit('chat', { text });
   inp.value = '';
   inp.style.height = 'auto';
+  hideMentionDropdown();
 }
 
 socket.on('chat', ({ name, text }) => addMsg(name, text, 'other'));
 
-// ============================================================
-//  ПОЛЬЗОВАТЕЛИ
-// ============================================================
-
-socket.on('error_msg', msg => {
-  toast(msg, 'err');
-  setBtn('createBtn', false, '✨ Создать комнату');
-  setBtn('joinBtn',   false, '🚀 Войти в комнату');
-});
-socket.on('disconnect', () => {
-  document.getElementById('dot').classList.remove('on');
-  document.getElementById('statusTxt').textContent = 'Соединение потеряно...';
-  addLog('Соединение потеряно', 'sys');
-});
-socket.on('connect', () => {
-  document.getElementById('dot').classList.add('on');
-  document.getElementById('statusTxt').textContent = 'Онлайн';
-  // Пытаемся восстановить сессию при переподключении
-  if (mySessionId && myRoom) {
-    socket.emit('rejoin', { sessionId: mySessionId });
-  }
-});
+// Форматирование сообщения — подсветка @упоминаний
+function formatMsgText(text) {
+  const escaped = esc(text);
+  return escaped.replace(/@(\S+)/g, (match, name) => {
+    const isMe = name === myName;
+    return `<span class="mention${isMe ? ' mention-me' : ''}">${match}</span>`;
+  });
+}
 
 // ============================================================
 //  CODE POPUP
@@ -518,6 +540,7 @@ function showCodePopup() {
   document.getElementById('codePopup').classList.add('show');
 }
 function closePopup() { document.getElementById('codePopup').classList.remove('show'); }
+
 function copyCode() {
   navigator.clipboard.writeText(myRoom)
     .then(() => toast('📋 Код скопирован!', 'copy'));
@@ -526,6 +549,16 @@ function copyLink() {
   const link = `${location.origin}/?room=${myRoom}`;
   navigator.clipboard.writeText(link)
     .then(() => toast('🔗 Ссылка скопирована!', 'copy'));
+}
+
+function shareRoom() {
+  const link = `${location.origin}/?room=${myRoom}`;
+  const text = `🎬 КиноВместе\nКод: ${myRoom}\nСсылка: ${link}`;
+  if (navigator.share) {
+    navigator.share({ title: 'КиноВместе', text, url: link });
+  } else {
+    navigator.clipboard.writeText(text).then(() => toast('🔗 Скопировано!', 'copy'));
+  }
 }
 
 // ============================================================
@@ -557,67 +590,147 @@ function addMsg(name, text, type) {
   const div  = document.createElement('div');
   div.className = `msg ${type}`;
   const t = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  const formattedText = formatMsgText(text);
   div.innerHTML = `
     ${type === 'other' ? `<div class="msg-meta">${esc(name)}</div>` : ''}
-    <div class="bubble">${esc(text)}</div>
+    <div class="bubble">${formattedText}</div>
     <div class="msg-meta">${t}</div>`;
-  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
   if (type !== 'sys') document.getElementById('msgCount').textContent = ++msgN;
 }
 
 function fmtTime(s) { s = Math.floor(s || 0); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
 function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Авто-вход по ссылке /?room=ABC123
-window.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(location.search);
-  const roomFromUrl = params.get('room');
-  if (roomFromUrl) {
-    switchTab('join');
-    document.getElementById('codeInput').value = roomFromUrl.toUpperCase();
+// ============================================================
+//  @ УПОМИНАНИЯ
+// ============================================================
+
+const roomMembers = {}; // { id: name }
+let mentionDropdownOpen = false;
+
+function insertMention() {
+  const inp = document.getElementById('chatInp');
+  inp.value += '@';
+  inp.focus();
+  showMentionDropdown();
+}
+
+function showMentionDropdown(filter = '') {
+  const dropdown = document.getElementById('mentionDropdown');
+  const names = Object.values(roomMembers).filter(n => n !== myName && n.toLowerCase().startsWith(filter.toLowerCase()));
+
+  if (!names.length) { hideMentionDropdown(); return; }
+
+  dropdown.innerHTML = '';
+  names.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'mention-item';
+    item.innerHTML = `<span class="mention-avatar">${name[0].toUpperCase()}</span><span>${esc(name)}</span>`;
+    item.onclick = () => selectMention(name);
+    dropdown.appendChild(item);
+  });
+  dropdown.classList.add('show');
+  mentionDropdownOpen = true;
+}
+
+function hideMentionDropdown() {
+  document.getElementById('mentionDropdown').classList.remove('show');
+  mentionDropdownOpen = false;
+}
+
+function selectMention(name) {
+  const inp = document.getElementById('chatInp');
+  inp.value = inp.value.replace(/@\S*$/, `@${name} `);
+  inp.focus();
+  autoResize(inp);
+  hideMentionDropdown();
+}
+
+// Следим за набором @ в инпуте
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('chatInp');
+  if (!inp) return;
+  inp.addEventListener('input', () => {
+    const val = inp.value;
+    const atMatch = val.match(/@(\S*)$/);
+    if (atMatch) {
+      showMentionDropdown(atMatch[1]);
+    } else {
+      hideMentionDropdown();
+    }
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.chat-inp-area')) {
+    hideMentionDropdown();
   }
 });
-function shareRoom() {
-  const link = `${location.origin}/?room=${myRoom}`;
-  const text = `🎬 КиноВместе\nКод: ${myRoom}\nСсылка: ${link}`;
-  if (navigator.share) {
-    navigator.share({ title: 'КиноВместе', text, url: link });
-  } else {
-    navigator.clipboard.writeText(text).then(() => toast('🔗 Ссылка и код скопированы!', 'copy'));
-  }
+
+// ============================================================
+//  ЭМОДЗИ ПИКЕР
+// ============================================================
+
+const EMOJIS = [
+  '😀','😂','🥹','😍','🥰','😎','🤩','😭','😡','🤔',
+  '👍','👎','❤️','🔥','💯','✨','🎉','🎬','🍿','👀',
+  '😴','🤣','😱','🥳','😏','🤗','😶','🫡','💀','🗿',
+  '👋','🙌','🤝','💪','🫶','🙏','👏','🤌','😤','🫠',
+];
+
+let emojiPickerOpen = false;
+
+function buildEmojiGrid() {
+  const grid = document.getElementById('emojiGrid');
+  if (grid.children.length) return;
+  EMOJIS.forEach(e => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn';
+    btn.textContent = e;
+    btn.onclick = () => insertEmoji(e);
+    grid.appendChild(btn);
+  });
 }
+
+function toggleEmojiPicker() {
+  emojiPickerOpen = !emojiPickerOpen;
+  buildEmojiGrid();
+  document.getElementById('emojiPicker').classList.toggle('show', emojiPickerOpen);
+  if (emojiPickerOpen) hideMentionDropdown();
+}
+
+function insertEmoji(emoji) {
+  const inp = document.getElementById('chatInp');
+  const pos = inp.selectionStart;
+  inp.value = inp.value.slice(0, pos) + emoji + inp.value.slice(pos);
+  inp.focus();
+  inp.selectionStart = inp.selectionEnd = pos + emoji.length;
+  autoResize(inp);
+  emojiPickerOpen = false;
+  document.getElementById('emojiPicker').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.chat-inp-area')) {
+    emojiPickerOpen = false;
+    document.getElementById('emojiPicker')?.classList.remove('show');
+  }
+});
 
 // ============================================================
 //  МИКРОФОН
 // ============================================================
 
-let micStream     = null;
-let peerConns     = {};
-let memberIds     = [];
-let micMode       = null; // 'toggle' | 'hold'
-let micActive     = false;
-let micHoldTimer  = null;
-const DUCK_VOL    = 0.15;
+let micStream      = null;
+let peerConns      = {};
+let memberIds      = [];
+let micActive      = false;
+let micHoldTimer   = null;
+let holdActivated  = false;
+const DUCK_VOL     = 0.15;
 const remoteAudios = {};
-
-socket.on('room_joined', ({ memberIds: ids }) => { if (ids) memberIds = ids; });
-socket.on('user_joined', ({ name, count, id }) => {
-  membersN = count; updateMembers();
-  addMsg('', `${esc(name)} присоединился 👋`, 'sys');
-  toast(`${esc(name)} в комнате!`, 'info');
-  addLog(`${esc(name)} вошёл в комнату`, 'sys');
-  if (id && !memberIds.includes(id)) memberIds.push(id);
-});
-socket.on('user_left', ({ name, count, id }) => {
-  membersN = count; updateMembers();
-  addMsg('', `${esc(name)} вышел 👋`, 'sys');
-  addLog(`${esc(name)} вышел`, 'sys');
-  if (id) {
-    memberIds = memberIds.filter(i => i !== id);
-    if (peerConns[id]) { peerConns[id].close(); delete peerConns[id]; }
-    if (remoteAudios[id]) { remoteAudios[id].remove(); delete remoteAudios[id]; }
-  }
-});
 
 function duckVolume(yes) {
   video.volume = yes ? DUCK_VOL : 1;
@@ -634,7 +747,7 @@ function makePeerConn(remoteId) {
     let audio = remoteAudios[remoteId];
     if (!audio) {
       audio = document.createElement('audio');
-      audio.autoplay = true;
+      audio.autoplay   = true;
       audio.playsInline = true;
       document.body.appendChild(audio);
       remoteAudios[remoteId] = audio;
@@ -687,14 +800,10 @@ function deactivateMic() {
   document.getElementById('micHint').textContent = 'Нажми · Держи для записи';
 }
 
-// Клик — toggle, зажатие — hold
-let holdActivated = false;
-
 function onMicDown() {
   holdActivated = false;
   micHoldTimer = setTimeout(async () => {
     holdActivated = true;
-    micMode = 'hold';
     await activateMic();
   }, 300);
 }
@@ -704,18 +813,14 @@ function onMicUp(e) {
   clearTimeout(micHoldTimer);
   if (holdActivated) {
     deactivateMic();
-    micMode = null;
+    holdActivated = false;
   }
 }
 
 function toggleMic() {
-  if (holdActivated) return; // уже обработано hold
-  if (micActive) {
-    deactivateMic();
-  } else {
-    micMode = 'toggle';
-    activateMic();
-  }
+  if (holdActivated) return;
+  if (micActive) deactivateMic();
+  else activateMic();
 }
 
 socket.on('rtc_offer', async ({ from, offer }) => {
@@ -740,74 +845,15 @@ socket.on('mic_start', ({ name }) => {
 socket.on('mic_stop', () => { duckVolume(false); });
 
 // ============================================================
-//  @ УПОМИНАНИЯ
-// ============================================================
-
-function insertMention() {
-  const room = rooms?.[myRoom];
-  const inp = document.getElementById('chatInp');
-  // Берём список участников из логов
-  inp.value += '@';
-  inp.focus();
-  toast('Напиши имя после @', 'info');
-}
-
-// ============================================================
-//  ЭМОДЗИ ПИКЕР
-// ============================================================
-
-const EMOJIS = [
-  '😀','😂','🥹','😍','🥰','😎','🤩','😭','😡','🤔',
-  '👍','👎','❤️','🔥','💯','✨','🎉','🎬','🍿','👀',
-  '😴','🤣','😱','🥳','😏','🤗','😶','🫡','💀','🗿',
-  '👋','🙌','🤝','💪','🫶','🙏','👏','🤌','😤','🫠',
-];
-
-let emojiPickerOpen = false;
-
-function buildEmojiGrid() {
-  const grid = document.getElementById('emojiGrid');
-  if (grid.children.length) return;
-  EMOJIS.forEach(e => {
-    const btn = document.createElement('button');
-    btn.className = 'emoji-btn';
-    btn.textContent = e;
-    btn.onclick = () => insertEmoji(e);
-    grid.appendChild(btn);
-  });
-}
-
-function toggleEmojiPicker() {
-  emojiPickerOpen = !emojiPickerOpen;
-  buildEmojiGrid();
-  document.getElementById('emojiPicker').classList.toggle('show', emojiPickerOpen);
-}
-
-function insertEmoji(emoji) {
-  const inp = document.getElementById('chatInp');
-  inp.value += emoji;
-  inp.focus();
-  autoResize(inp);
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.chat-inp-area')) {
-    emojiPickerOpen = false;
-    document.getElementById('emojiPicker')?.classList.remove('show');
-  }
-});
-// ============================================================
 //  INVITE POPUP
 // ============================================================
 
 function showInvitePopup() {
   const link = `${location.origin}/?room=${myRoom}`;
   document.getElementById('inviteLinkText').textContent = link;
-  // Тип
   const isOpen = roomType === 'open';
   document.getElementById('iTypeOpen').classList.toggle('active', isOpen);
   document.getElementById('iTypeClosed').classList.toggle('active', !isOpen);
-  // Только хост может менять тип
   document.getElementById('inviteTypeRow').style.display  = isHost ? 'flex' : 'none';
   document.getElementById('inviteHostOnly').style.display = isHost ? 'none' : 'block';
   document.getElementById('invitePopup').classList.add('show');
@@ -838,5 +884,6 @@ socket.on('room_type_changed', ({ type, name }) => {
   addLog(`${name} сменил тип комнаты на ${type === 'open' ? 'публичную' : 'приватную'}`, 'sys');
 });
 
-// Закрыть попап по клику вне
-document.getElementById('invitePopup')?.addEventListener('click', closeInvitePopup);
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('invitePopup')?.addEventListener('click', closeInvitePopup);
+});
