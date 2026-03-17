@@ -122,8 +122,9 @@ function extractVideo(url) {
   if (m) return { platform: 'youtube', id: m[1] };
 
   // VK Video
-  m = url.match(/vkvideo\.ru\/video(-?\d+)_(\d+)/) || url.match(/vk\.com\/video(-?\d+)_(\d+)/);
-  if (m) return { platform: 'vk', id: `${m[1]}_${m[2]}` };
+  m = url.match(/vkvideo\.ru\/(?:playlist\/[^/]+\/)?video(-?\d+)_(\d+)/) || 
+      url.match(/vk\.com\/(?:playlist\/[^/]+\/)?video(-?\d+)_(\d+)/);
+      if (m) return { platform: 'vk', id: `${m[1]}_${m[2]}` };
 
   // Rutube
   m = url.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9_-]+)/);
