@@ -80,7 +80,7 @@ app.get('/api/rutube-hls', async (req, res) => {
   const id = String(req.query.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
   if (!id) return res.status(400).json({ error: 'no id' });
   try {
-    const apiUrl = `https://rutube.ru/api/play/options/${id}/?no_404=true&referer=https%3A%2F%2Frutube.ru&format=json`;
+    const apiUrl = `https://wakeup.su/rutube-proxy/rutube?id=${id}`;
     const { body } = await httpsGet(apiUrl);
     const data = JSON.parse(body.toString());
 
