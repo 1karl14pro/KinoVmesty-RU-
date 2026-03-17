@@ -243,8 +243,22 @@ socket.on('room_joined', async ({ code, videoId, videoUrl, state, time, count, i
     document.getElementById('vidProgress').classList.add('guest-mode');
   }
   await loadVideo(videoId, videoUrl);
-  if (time > 1) video.currentTime = time;
-  if (state === 'playing') video.play().catch(() => {});
+
+  // Синхронизация времени
+  if (time > 1) {
+    const syncTime = () => {
+      video.currentTime = time;
+      if (state === 'playing') video.play().catch(() => {});
+      video.removeEventListener('canplay', syncTime);
+    };
+    if (video.readyState >= 3) {
+      syncTime();
+    } else {
+      video.addEventListener('canplay', syncTime);
+    }
+  } else {
+    if (state === 'playing') video.play().catch(() => {});
+  }
   addLog('Ты вошёл в комнату', 'sys');
 });
 
@@ -515,14 +529,14 @@ function showCodePopup() {
   document.getElementById('codePopup').classList.add('show');
 }
 function closePopup() { document.getElementById('codePopup').classList.remove('show'); }
-function copyRoomCode() {
+function copyCode() {
+  navigator.clipboard.writeText(myRoom)
+    .then(() => toast('📋 Код скопирован!', 'copy'));
+}
+function copyLink() {
   const link = `${location.origin}/?room=${myRoom}`;
-  const text = `🎬 КиноВместе\nКод: ${myRoom}\nСсылка: ${link}`;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.getElementById('popupCopyBtn');
-    btn.textContent = '✅ Скопировано!'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Скопировать'; btn.classList.remove('copied'); }, 2500);
-  });
+  navigator.clipboard.writeText(link)
+    .then(() => toast('🔗 Ссылка скопирована!', 'copy'));
 }
 
 // ============================================================
