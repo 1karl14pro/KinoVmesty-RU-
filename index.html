@@ -203,6 +203,9 @@
         ЧАТ <span class="msg-count" id="msgCount">0</span>
       </div>
       <div class="msgs" id="msgs"></div>
+      <button id="micBtn" class="mic-btn"
+        onmousedown="startMic()" onmouseup="stopMic()"
+        ontouchstart="startMic(event)" ontouchend="stopMic()">🎤</button>
       <div class="chat-inp-area">
         <textarea class="chat-inp" id="chatInp"
           placeholder="Напиши что-нибудь…" rows="1" maxlength="500"

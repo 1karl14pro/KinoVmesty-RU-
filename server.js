@@ -220,8 +220,9 @@ io.on('connection', socket => {
     const safeCode = sanitize(code, 6).toUpperCase();
     const room = rooms[safeCode];
     if (!room) { socket.emit('error_msg', 'Комната не найдена — проверь код'); return; }
-
+    memberIds: [...room.members].filter(id => id !== socket.id);
     _joinRoom(socket, room, safeName, sessionId);
+    
   });
 
   // Войти через список открытых комнат
@@ -262,6 +263,7 @@ io.on('connection', socket => {
       count:    room.members.size,
       isHost:   room.hostId === socket.id,
       type:     room.type,
+      id: socket.id,
     });
 
     socket.to(room.code).emit('user_joined', { name: safeName, count: room.members.size });
@@ -291,7 +293,21 @@ io.on('connection', socket => {
     if (!safeText || !socket.roomCode) return;
     socket.to(socket.roomCode).emit('chat', { name: socket.userName, text: safeText });
   });
-
+  socket.on('mic_start', () => {
+  socket.to(socket.roomCode).emit('mic_start', { from: socket.id, name: socket.userName });
+  });
+  socket.on('mic_stop', () => {
+    socket.to(socket.roomCode).emit('mic_stop', { from: socket.id });
+  });
+  socket.on('rtc_offer', ({ to, offer }) => {
+    io.to(to).emit('rtc_offer', { from: socket.id, offer });
+  });
+  socket.on('rtc_answer', ({ to, answer }) => {
+    io.to(to).emit('rtc_answer', { from: socket.id, answer });
+  });
+  socket.on('rtc_ice', ({ to, candidate }) => {
+    io.to(to).emit('rtc_ice', { from: socket.id, candidate });
+  });
   socket.on('disconnect', () => {
     const code = socket.roomCode;
     const room = rooms[code];

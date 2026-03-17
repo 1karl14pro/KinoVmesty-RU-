@@ -597,3 +597,101 @@ function shareRoom() {
     navigator.clipboard.writeText(text).then(() => toast('🔗 Ссылка и код скопированы!', 'copy'));
   }
 }
+
+// ============================================================
+//  МИКРОФОН (WebRTC Push-to-Talk)
+// ============================================================
+
+let micStream      = null;
+let peerConns      = {};
+let memberIds      = [];
+const DUCK_VOL     = 0.15;
+const RESTORE_VOL  = 1;
+
+// Запоминаем ID участников при входе
+socket.on('room_joined', ({ memberIds: ids }) => {
+  if (ids) memberIds = ids;
+});
+socket.on('user_joined', ({ id }) => {
+  if (id && !memberIds.includes(id)) memberIds.push(id);
+});
+socket.on('user_left', ({ id }) => {
+  memberIds = memberIds.filter(i => i !== id);
+  if (peerConns[id]) { peerConns[id].close(); delete peerConns[id]; }
+});
+
+function duckVolume(yes) {
+  const vol = yes ? DUCK_VOL : RESTORE_VOL;
+  video.volume = vol;
+  document.getElementById('volSlider').value = vol;
+  updateVolBtn();
+}
+
+function makePeerConn(remoteId) {
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.onicecandidate = e => {
+    if (e.candidate) socket.emit('rtc_ice', { to: remoteId, candidate: e.candidate });
+  };
+  pc.ontrack = e => {
+    const audio = new Audio();
+    audio.srcObject = e.streams[0];
+    audio.play().catch(() => {});
+  };
+  if (micStream) micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
+  peerConns[remoteId] = pc;
+  return pc;
+}
+
+async function startMic() {
+  if (micStream) return;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    socket.emit('mic_start');
+    duckVolume(true);
+    document.getElementById('micBtn').classList.add('active');
+    toast('🎤 Говори!', 'play');
+    for (const id of memberIds) {
+      const pc = makePeerConn(id);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('rtc_offer', { to: id, offer });
+    }
+  } catch (e) {
+    toast('❌ Нет доступа к микрофону', 'err');
+  }
+}
+
+function stopMic() {
+  if (!micStream) return;
+  micStream.getTracks().forEach(t => t.stop());
+  micStream = null;
+  Object.values(peerConns).forEach(pc => pc.close());
+  peerConns = {};
+  socket.emit('mic_stop');
+  duckVolume(false);
+  document.getElementById('micBtn').classList.remove('active');
+}
+
+socket.on('rtc_offer', async ({ from, offer }) => {
+  const pc = makePeerConn(from);
+  await pc.setRemoteDescription(offer);
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit('rtc_answer', { to: from, answer });
+  duckVolume(true);
+});
+socket.on('rtc_answer', async ({ from, answer }) => {
+  if (peerConns[from]) await peerConns[from].setRemoteDescription(answer);
+});
+socket.on('rtc_ice', async ({ from, candidate }) => {
+  if (peerConns[from]) await peerConns[from].addIceCandidate(candidate);
+});
+socket.on('mic_start', ({ name }) => {
+  toast(`🎤 ${esc(name)} говорит...`, 'info');
+  addLog(`🎤 ${esc(name)} включил микрофон`, 'sys');
+  duckVolume(true);
+});
+socket.on('mic_stop', ({ from }) => {
+  duckVolume(false);
+  if (peerConns[from]) { peerConns[from].close(); delete peerConns[from]; }
+});
