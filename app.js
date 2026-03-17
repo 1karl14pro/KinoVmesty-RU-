@@ -1,0 +1,564 @@
+// ============================================================
+//  КиноВместе — app.js v4
+// ============================================================
+
+const socket = io();
+
+// ─── Состояние ───────────────────────────────────────────────────────────────
+let myName    = '';
+let myRoom    = '';
+let isHost    = false;
+let membersN  = 1;
+let msgN      = 0;
+let roomType  = 'closed';
+let hls       = null;
+let isSeeking = false;
+let selectedType = 'open';
+
+const video = document.getElementById('videoEl');
+
+// ============================================================
+//  СЕССИИ (куки)
+// ============================================================
+
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function setCookie(name, value, days = 30) {
+  const exp = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${exp}; path=/; SameSite=Lax`;
+}
+
+async function initSession(name) {
+  const savedId = getCookie('kv_session');
+  const resp = await fetch('/api/session', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: savedId, name }),
+  });
+  const data = await resp.json();
+  setCookie('kv_session', data.sessionId);
+  return data; // { sessionId, name, roomCode }
+}
+
+let mySessionId = getCookie('kv_session') || null;
+
+// Проверяем сессию при загрузке страницы
+window.addEventListener('DOMContentLoaded', async () => {
+  if (mySessionId) {
+    try {
+      const resp = await fetch('/api/session', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: mySessionId }),
+      });
+      const data = await resp.json();
+      if (data.sessionId) {
+        mySessionId = data.sessionId;
+        setCookie('kv_session', mySessionId);
+        // Подставляем ник в поля
+        if (data.name) {
+          document.getElementById('nameCreate').value = data.name;
+          document.getElementById('nameJoin').value   = data.name;
+          document.getElementById('nameBrowse').value = data.name;
+        }
+        // Если был в комнате — предлагаем вернуться
+        if (data.roomCode) {
+          socket.emit('auth', { sessionId: mySessionId });
+        }
+      }
+    } catch (e) {
+      console.warn('Ошибка проверки сессии:', e);
+    }
+  }
+  // Загружаем открытые комнаты при открытии таба browse
+  loadOpenRooms();
+});
+
+// Сервер говорит что сессия найдена и была в комнате
+socket.on('session_restore', ({ roomCode, name }) => {
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position:fixed;top:0;left:0;right:0;z-index:300;
+    background:#1a1d2a;border-bottom:1px solid #252836;
+    padding:12px 20px;display:flex;align-items:center;gap:12px;
+    font-size:.85rem;animation:msgIn .3s ease;
+  `;
+  banner.innerHTML = `
+    <span>👋 Ты был в комнате <b>${roomCode}</b> как <b>${name}</b>. Вернуться?</span>
+    <button onclick="rejoinRoom('${roomCode}')" style="padding:6px 14px;border-radius:8px;border:none;background:#06d6a0;color:#0c0d12;font-weight:700;cursor:pointer;">Вернуться</button>
+    <button onclick="this.parentNode.remove()" style="padding:6px 14px;border-radius:8px;border:1px solid #252836;background:transparent;color:#5c6080;cursor:pointer;">Нет</button>
+  `;
+  document.body.prepend(banner);
+});
+
+function rejoinRoom(roomCode) {
+  document.querySelector('[style*="position:fixed"]')?.remove();
+  socket.emit('rejoin', { sessionId: mySessionId });
+}
+
+socket.on('auth_ok', ({ name }) => {
+  // Просто обновляем поля
+});
+
+// ============================================================
+//  ТАБЫ ГЛАВНОГО МЕНЮ
+// ============================================================
+
+function switchTab(tab) {
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.stab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'browse') loadOpenRooms();
+}
+
+// ─── Тип комнаты ─────────────────────────────────────────────────────────────
+function selectType(type) {
+  selectedType = type;
+  document.getElementById('typeOpen').classList.toggle('active',   type === 'open');
+  document.getElementById('typeClosed').classList.toggle('active', type === 'closed');
+  document.getElementById('titleGroup').style.display = type === 'open' ? 'flex' : 'none';
+}
+// По умолчанию открытая
+selectType('open');
+
+// ─── Список открытых комнат ──────────────────────────────────────────────────
+async function loadOpenRooms() {
+  const list = document.getElementById('roomsList');
+  list.innerHTML = '<div class="rooms-empty">Загружаем...</div>';
+  try {
+    const resp  = await fetch('/api/rooms');
+    const rooms = await resp.json();
+    if (!rooms.length) {
+      list.innerHTML = '<div class="rooms-empty">Открытых комнат пока нет 🌚<br>Создай первую!</div>';
+      return;
+    }
+    list.innerHTML = '';
+    rooms.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'room-item';
+      item.innerHTML = `
+        <div class="room-item-icon">🎬</div>
+        <div class="room-item-info">
+          <div class="room-item-title">${esc(r.title)}</div>
+          <div class="room-item-meta">👥 ${r.members} · ${esc(r.videoUrl.slice(0, 40))}...</div>
+        </div>
+        <button class="room-item-join" onclick="joinOpenRoom('${r.code}')">Войти</button>
+      `;
+      list.appendChild(item);
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="rooms-empty">Ошибка загрузки 😕</div>';
+  }
+}
+
+function joinOpenRoom(code) {
+  const name = document.getElementById('nameBrowse').value.trim() || 'Гость';
+  setBtn('', true, '');
+  socket.emit('join_open_room', { name, code, sessionId: mySessionId });
+}
+
+// ============================================================
+//  СОЗДАНИЕ / ВХОД
+// ============================================================
+
+async function createRoom() {
+  const name     = document.getElementById('nameCreate').value.trim() || 'Хозяин';
+  const videoUrl = document.getElementById('urlCreate').value.trim();
+  const title    = document.getElementById('titleCreate').value.trim();
+  if (!videoUrl) { toast('Вставь ссылку на видео!', 'info'); return; }
+
+  setBtn('createBtn', true, '<span class="spinner"></span> Создаём...');
+  const session = await initSession(name);
+  mySessionId = session.sessionId;
+  myName = session.name;
+
+  socket.emit('create_room', {
+    name:      myName,
+    videoUrl,
+    type:      selectedType,
+    title:     title || myName + ' смотрит',
+    sessionId: mySessionId,
+  });
+}
+
+async function joinRoom() {
+  const name = document.getElementById('nameJoin').value.trim() || 'Гость';
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (!code) { toast('Введи код комнаты!', 'info'); return; }
+
+  setBtn('joinBtn', true, '<span class="spinner"></span> Входим...');
+  const session = await initSession(name);
+  mySessionId = session.sessionId;
+  myName = session.name;
+
+  socket.emit('join_room', { name: myName, code, sessionId: mySessionId });
+}
+
+async function pasteCode() {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('codeInput').value = text.trim().toUpperCase().slice(0, 6);
+    toast('📋 Вставлено!', 'copy');
+  } catch (e) { toast('Вставь вручную: Ctrl+V', 'info'); }
+}
+
+// ─── Вход в приложение ───────────────────────────────────────────────────────
+function enterApp(code, type) {
+  myRoom    = code;
+  roomType  = type;
+  document.getElementById('topCode').textContent  = code;
+  document.getElementById('topType').textContent  = type === 'open' ? '🌐 Открытая' : '🔒 Закрытая';
+  document.getElementById('setup').style.display  = 'none';
+  document.getElementById('app').style.display    = 'flex';
+}
+
+socket.on('room_created', ({ code, videoId, videoUrl, type }) => {
+  isHost = true;
+  setBtn('createBtn', false, '✨ Создать комнату');
+  enterApp(code, type);
+  // Попап с кодом
+  document.getElementById('bigCode').textContent = code;
+  const badge = document.getElementById('popupTypeBadge');
+  badge.textContent = type === 'open' ? '🌐 Открытая — видна всем' : '🔒 Закрытая — только по коду';
+  badge.className   = 'popup-type-badge ' + type;
+  document.getElementById('codePopup').classList.add('show');
+  document.getElementById('hostBadge').classList.add('show');
+  loadVideo(videoId, videoUrl);
+  addLog('Комната создана', 'sys');
+});
+
+socket.on('room_joined', async ({ code, videoId, videoUrl, state, time, count, isHost: host, type }) => {
+  isHost = host;
+  setBtn('joinBtn', false, '🚀 Войти в комнату');
+  enterApp(code, type);
+  membersN = count;
+  updateMembers();
+  if (isHost) document.getElementById('hostBadge').classList.add('show');
+  // Гость не может перематывать
+  if (!isHost) {
+    document.getElementById('vidProgress').classList.add('guest-mode');
+  }
+  await loadVideo(videoId, videoUrl);
+  if (time > 1) video.currentTime = time;
+  if (state === 'playing') video.play().catch(() => {});
+  addLog('Ты вошёл в комнату', 'sys');
+});
+
+socket.on('rejoined', () => {
+  toast('✅ Восстановлено подключение', 'play');
+  addLog('Переподключение восстановлено', 'sys');
+});
+
+socket.on('you_are_host', () => {
+  isHost = true;
+  document.getElementById('hostBadge').classList.add('show');
+  document.getElementById('vidProgress').classList.remove('guest-mode');
+  toast('👑 Ты теперь хост!', 'info');
+  addLog('👑 Ты теперь хозяин комнаты', 'sys');
+});
+
+// ============================================================
+//  HLS ПЛЕЕР
+// ============================================================
+
+function showLoading(yes) {
+  document.getElementById('vidLoading').classList.toggle('show', yes);
+}
+
+function showError(msg) {
+  document.getElementById('vidLoading').classList.remove('show');
+  document.getElementById('vidError').classList.add('show');
+  document.getElementById('vidErrorText').textContent = msg || 'Не удалось загрузить видео';
+}
+
+async function loadVideo(videoId, videoUrl) {
+  showLoading(true);
+  document.getElementById('vidError').classList.remove('show');
+  document.getElementById('urlDisplay').textContent = videoUrl;
+
+  let hlsUrl;
+  try {
+    const resp = await fetch(`/api/rutube-hls?id=${encodeURIComponent(videoId)}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.hlsUrl) throw new Error(data.error || 'нет hlsUrl');
+    hlsUrl = data.hlsUrl;
+  } catch (e) {
+    showError(`Ошибка HLS: ${e.message}`);
+    return;
+  }
+
+  if (hls) { hls.destroy(); hls = null; }
+
+  if (Hls.isSupported()) {
+    hls = new Hls({ enableWorker: true });
+    hls.loadSource(hlsUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      showLoading(false);
+      const overlay = document.getElementById('vidOverlay');
+      overlay.classList.add('force-show');
+      setTimeout(() => overlay.classList.remove('force-show'), 2000);
+    });
+    hls.on(Hls.Events.ERROR, (_, data) => {
+      if (data.fatal) showError('Ошибка HLS — ' + data.type);
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = hlsUrl;
+    showLoading(false);
+  } else {
+    showError('Браузер не поддерживает HLS. Используй Chrome или Firefox.');
+  }
+}
+
+video.addEventListener('timeupdate', () => {
+  if (isSeeking) return;
+  const cur = video.currentTime, dur = video.duration || 0;
+  if (dur > 0) {
+    document.getElementById('vidProgress').value = (cur / dur) * 100;
+    document.getElementById('vidTime').textContent = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+  }
+  if (isHost && Math.floor(cur) % 3 === 0) socket.emit('time_update', { time: cur });
+});
+
+video.addEventListener('waiting', () => showLoading(true));
+video.addEventListener('playing', () => showLoading(false));
+video.addEventListener('canplay', () => showLoading(false));
+
+// ============================================================
+//  УПРАВЛЕНИЕ ПЛЕЕРОМ
+// ============================================================
+
+function togglePlay() {
+  if (video.paused) playerAction('play');
+  else              playerAction('pause');
+}
+
+function playerAction(action) {
+  const time = video.currentTime || 0;
+
+  if (action === 'play') {
+    video.play();
+    document.getElementById('bigPlay').textContent = '⏸';
+    addLog('▶ Ты запустил видео', 'play');
+  }
+  if (action === 'pause') {
+    video.pause();
+    document.getElementById('bigPlay').textContent = '▶';
+    addLog('⏸ Ты поставил паузу', 'pause');
+  }
+
+  socket.emit('player_action', { action, time });
+}
+
+// Перемотка — только хост
+function onSeekInput(el) {
+  if (!isHost) return;
+  isSeeking = true;
+  const t = (el.value / 100) * (video.duration || 0);
+  document.getElementById('vidTime').textContent = `${fmtTime(t)} / ${fmtTime(video.duration || 0)}`;
+}
+function onSeekChange(el) {
+  if (!isHost) return;
+  isSeeking = false;
+  const t = (el.value / 100) * (video.duration || 0);
+  video.currentTime = t;
+  socket.emit('player_action', { action: 'seek', time: t });
+  addLog(`🔄 Перемотка на ${fmtTime(t)}`, 'seek');
+}
+
+// Получаем команду от другого
+socket.on('player_action', ({ action, time, name }) => {
+  if (action === 'play') {
+    video.play();
+    document.getElementById('bigPlay').textContent = '⏸';
+    toast(`▶ ${esc(name)} запустил видео`, 'play');
+    addLog(`▶ ${esc(name)} запустил видео`, 'play');
+  }
+  if (action === 'pause') {
+    video.pause();
+    document.getElementById('bigPlay').textContent = '▶';
+    toast(`⏸ ${esc(name)} поставил паузу`, 'pause');
+    addLog(`⏸ ${esc(name)} поставил паузу`, 'pause');
+  }
+  if (action === 'seek') {
+    video.currentTime = time;
+    video.play();
+    document.getElementById('bigPlay').textContent = '⏸';
+    toast(`🔄 ${esc(name)} перемотал на ${fmtTime(time)}`, 'info');
+    addLog(`🔄 ${esc(name)} перемотал на ${fmtTime(time)}`, 'seek');
+  }
+});
+
+// ============================================================
+//  ГРОМКОСТЬ
+// ============================================================
+
+function onVolumeChange(el) {
+  video.volume = parseFloat(el.value);
+  video.muted  = video.volume === 0;
+  updateVolBtn();
+}
+function toggleMute() {
+  video.muted = !video.muted;
+  document.getElementById('volSlider').value = video.muted ? 0 : video.volume;
+  updateVolBtn();
+}
+function updateVolBtn() {
+  const btn = document.getElementById('volBtn');
+  if (video.muted || video.volume === 0) btn.textContent = '🔇';
+  else if (video.volume < 0.5)           btn.textContent = '🔉';
+  else                                   btn.textContent = '🔊';
+}
+
+// ============================================================
+//  ФУЛЛСКРИН
+// ============================================================
+
+function toggleFullscreen() {
+  const wrap = document.getElementById('videoWrap');
+  if (!document.fullscreenElement) {
+    wrap.requestFullscreen().catch(e => toast('Фуллскрин недоступен', 'err'));
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.querySelector('.fs-btn');
+  if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+});
+
+// ============================================================
+//  ЛОГИ
+// ============================================================
+
+function addLog(text, type = 'sys') {
+  const body = document.getElementById('logsBody');
+  const div  = document.createElement('div');
+  div.className = `log-entry log-${type}`;
+  const t = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  div.innerHTML = `<span class="log-time">${t}</span>${text}`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function toggleLogs() {
+  const panel = document.getElementById('logsPanel');
+  const btn   = document.querySelector('.logs-toggle-btn');
+  panel.classList.toggle('show');
+  btn.classList.toggle('active');
+}
+
+function clearLogs() {
+  document.getElementById('logsBody').innerHTML = '';
+}
+
+// ============================================================
+//  ЧАТ
+// ============================================================
+
+function sendMsg() {
+  const inp  = document.getElementById('chatInp');
+  const text = inp.value.trim().slice(0, 500);
+  if (!text) return;
+  addMsg(myName, text, 'me');
+  socket.emit('chat', { text });
+  inp.value = '';
+  inp.style.height = 'auto';
+}
+
+socket.on('chat', ({ name, text }) => addMsg(name, text, 'other'));
+
+// ============================================================
+//  ПОЛЬЗОВАТЕЛИ
+// ============================================================
+
+socket.on('user_joined', ({ name, count }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} присоединился 👋`, 'sys');
+  toast(`${esc(name)} в комнате!`, 'info');
+  addLog(`${esc(name)} вошёл в комнату`, 'sys');
+});
+socket.on('user_left', ({ name, count }) => {
+  membersN = count; updateMembers();
+  addMsg('', `${esc(name)} вышел 👋`, 'sys');
+  addLog(`${esc(name)} вышел`, 'sys');
+});
+socket.on('error_msg', msg => {
+  toast(msg, 'err');
+  setBtn('createBtn', false, '✨ Создать комнату');
+  setBtn('joinBtn',   false, '🚀 Войти в комнату');
+});
+socket.on('disconnect', () => {
+  document.getElementById('dot').classList.remove('on');
+  document.getElementById('statusTxt').textContent = 'Соединение потеряно...';
+  addLog('Соединение потеряно', 'sys');
+});
+socket.on('connect', () => {
+  document.getElementById('dot').classList.add('on');
+  document.getElementById('statusTxt').textContent = 'Онлайн';
+  // Пытаемся восстановить сессию при переподключении
+  if (mySessionId && myRoom) {
+    socket.emit('rejoin', { sessionId: mySessionId });
+  }
+});
+
+// ============================================================
+//  CODE POPUP
+// ============================================================
+
+function showCodePopup() {
+  document.getElementById('bigCode').textContent = myRoom;
+  document.getElementById('codePopup').classList.add('show');
+}
+function closePopup() { document.getElementById('codePopup').classList.remove('show'); }
+function copyRoomCode() {
+  navigator.clipboard.writeText(myRoom).then(() => {
+    const btn = document.getElementById('popupCopyBtn');
+    btn.textContent = '✅ Скопировано!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Скопировать'; btn.classList.remove('copied'); }, 2500);
+  });
+}
+
+// ============================================================
+//  ХЕЛПЕРЫ
+// ============================================================
+
+function updateMembers() { document.getElementById('membersCount').textContent = `👥 ${membersN}`; }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 90) + 'px'; }
+function stopEv(e) { e.stopPropagation(); }
+
+function setBtn(id, dis, html) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.disabled  = dis;
+  b.innerHTML = html;
+}
+
+let toastTimer;
+function toast(text, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = text; el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+function addMsg(name, text, type) {
+  const msgs = document.getElementById('msgs');
+  const div  = document.createElement('div');
+  div.className = `msg ${type}`;
+  const t = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `
+    ${type === 'other' ? `<div class="msg-meta">${esc(name)}</div>` : ''}
+    <div class="bubble">${esc(text)}</div>
+    <div class="msg-meta">${t}</div>`;
+  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
+  if (type !== 'sys') document.getElementById('msgCount').textContent = ++msgN;
+}
+
+function fmtTime(s) { s = Math.floor(s || 0); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>КиноВместе 🎬</title>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== SETUP ===== -->
+<div id="setup">
+  <div class="logo">КиноВместе 🎬</div>
+  <p class="tagline">Смотри Rutube с друзьями в реальном времени</p>
+
+  <!-- Табы -->
+  <div class="setup-tabs">
+    <button class="stab active" onclick="switchTab('create')">✨ Создать</button>
+    <button class="stab" onclick="switchTab('join')">🔗 Войти по коду</button>
+    <button class="stab" onclick="switchTab('browse')">🌐 Открытые комнаты</button>
+  </div>
+
+  <!-- ТАБ: Создать комнату -->
+  <div class="tab-panel active" id="tab-create">
+    <div class="card wide-card">
+      <div class="inp-group">
+        <label>Твой ник</label>
+        <input id="nameCreate" type="text" placeholder="Как тебя называть?" maxlength="32"/>
+      </div>
+      <div class="inp-group">
+        <label>Ссылка на видео Rutube</label>
+        <input id="urlCreate" type="text" placeholder="https://rutube.ru/video/..."/>
+      </div>
+
+      <!-- Тип комнаты -->
+      <div class="room-type-row">
+        <div class="room-type-opt active" id="typeOpen" onclick="selectType('open')">
+          <div class="rtype-icon">🌐</div>
+          <div class="rtype-info">
+            <div class="rtype-name">Открытая</div>
+            <div class="rtype-desc">Видна всем в списке комнат</div>
+          </div>
+          <div class="rtype-check">✓</div>
+        </div>
+        <div class="room-type-opt" id="typeClosed" onclick="selectType('closed')">
+          <div class="rtype-icon">🔒</div>
+          <div class="rtype-info">
+            <div class="rtype-name">Закрытая</div>
+            <div class="rtype-desc">Только по коду</div>
+          </div>
+          <div class="rtype-check">✓</div>
+        </div>
+      </div>
+
+      <!-- Название (только для открытой) -->
+      <div class="inp-group" id="titleGroup">
+        <label>Название комнаты</label>
+        <input id="titleCreate" type="text" placeholder="Например: смотрим аниме 🍿" maxlength="60"/>
+      </div>
+
+      <button class="btn btn-primary" id="createBtn" onclick="createRoom()">✨ Создать комнату</button>
+    </div>
+  </div>
+
+  <!-- ТАБ: Войти по коду -->
+  <div class="tab-panel" id="tab-join">
+    <div class="card wide-card">
+      <div class="inp-group">
+        <label>Твой ник</label>
+        <input id="nameJoin" type="text" placeholder="Как тебя называть?" maxlength="32"/>
+      </div>
+      <div class="inp-group">
+        <label>Код комнаты</label>
+        <div class="invite-wrap">
+          <input id="codeInput" type="text" placeholder="ABC123" maxlength="6"
+            oninput="this.value=this.value.toUpperCase()"/>
+          <button class="invite-paste-btn" onclick="pasteCode()" title="Вставить">📋</button>
+        </div>
+        <div class="invite-hint">Попроси хозяина прислать 6-значный код <b>Ctrl+V</b></div>
+      </div>
+      <button class="btn btn-yellow" id="joinBtn" onclick="joinRoom()">🚀 Войти в комнату</button>
+    </div>
+  </div>
+
+  <!-- ТАБ: Открытые комнаты -->
+  <div class="tab-panel" id="tab-browse">
+    <div class="card wide-card">
+      <div class="inp-group">
+        <label>Твой ник</label>
+        <input id="nameBrowse" type="text" placeholder="Как тебя называть?" maxlength="32"/>
+      </div>
+      <div class="rooms-list-wrap">
+        <div class="rooms-list-hdr">
+          <span>Открытые комнаты</span>
+          <button class="refresh-btn" onclick="loadOpenRooms()">🔄</button>
+        </div>
+        <div class="rooms-list" id="roomsList">
+          <div class="rooms-empty">Загружаем список...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== CODE POPUP ===== -->
+<div id="codePopup">
+  <div class="popup-card">
+    <div class="popup-title">Комната создана! 🎉</div>
+    <div class="big-code" id="bigCode">------</div>
+    <div class="popup-type-badge" id="popupTypeBadge">🌐 Открытая</div>
+    <div class="popup-hint">Отправь код другу — он введёт его и окажется рядом</div>
+    <div class="popup-btns">
+      <button class="btn btn-copy" id="popupCopyBtn" onclick="copyRoomCode()">📋 Скопировать</button>
+      <button class="btn btn-watch" onclick="closePopup()">▶ Смотреть!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+
+  <div class="topbar">
+    <span class="logo-sm">КиноВместе</span>
+    <span class="room-code-badge" id="topCode" onclick="showCodePopup()">------</span>
+    <span class="room-type-pill" id="topType">🌐</span>
+    <span class="dot on" id="dot"></span>
+    <span class="status-txt" id="statusTxt">Онлайн</span>
+    <span class="members-count" id="membersCount">👥 1</span>
+    <span class="host-badge" id="hostBadge">👑 Хост</span>
+    <span class="spacer"></span>
+    <button class="exit-btn" onclick="location.reload()">← Выйти</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Видео -->
+    <div class="video-side">
+      <div class="video-wrap" id="videoWrap">
+
+        <video id="videoEl" playsinline></video>
+
+        <!-- Оверлей управления (клик = play/pause) -->
+        <div class="vid-overlay" id="vidOverlay" onclick="togglePlay()">
+          <div class="big-play" id="bigPlay">▶</div>
+          <div class="vid-progress-wrap" onclick="stopEv(event)">
+            <input class="vid-progress" id="vidProgress" type="range"
+              min="0" max="100" step="0.1" value="0"
+              oninput="onSeekInput(this)"
+              onchange="onSeekChange(this)"
+              onclick="stopEv(event)"/>
+            <div class="vid-bottom-row">
+              <span class="vid-time" id="vidTime">0:00 / 0:00</span>
+              <span class="vid-spacer"></span>
+              <div class="vol-wrap" onclick="stopEv(event)">
+                <button class="vol-btn" id="volBtn" onclick="toggleMute()">🔊</button>
+                <input class="vol-slider" id="volSlider" type="range"
+                  min="0" max="1" step="0.02" value="1"
+                  oninput="onVolumeChange(this)"
+                  onclick="stopEv(event)"/>
+              </div>
+              <button class="fs-btn" onclick="stopEv(event);toggleFullscreen()">⛶</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Загрузка -->
+        <div class="vid-loading show" id="vidLoading">
+          <div class="big-spinner"></div>
+          <p>Загружаем видео...</p>
+        </div>
+
+        <!-- Ошибка -->
+        <div class="vid-error" id="vidError">
+          <div class="icon">😕</div>
+          <p id="vidErrorText">Не удалось загрузить видео</p>
+        </div>
+
+      </div>
+
+      <!-- Нижняя панель с URL -->
+      <div class="bottom-bar">
+        <span class="ctrl-url" id="urlDisplay"></span>
+        <button class="logs-toggle-btn" onclick="toggleLogs()" title="Логи событий">•••</button>
+      </div>
+
+      <!-- Панель логов (скрыта по умолчанию) -->
+      <div class="logs-panel" id="logsPanel">
+        <div class="logs-hdr">
+          <span>Логи событий</span>
+          <button onclick="clearLogs()">Очистить</button>
+        </div>
+        <div class="logs-body" id="logsBody"></div>
+      </div>
+    </div>
+
+    <!-- Чат -->
+    <div class="sidebar">
+      <div class="sidebar-hdr">
+        ЧАТ <span class="msg-count" id="msgCount">0</span>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="chat-inp-area">
+        <textarea class="chat-inp" id="chatInp"
+          placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"></textarea>
+        <button class="send-btn" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
