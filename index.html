@@ -238,30 +238,25 @@
           <div class="emoji-grid" id="emojiGrid"></div>
         </div>
 
-        <!-- Строка ввода -->
+        <!-- Строка ввода с микрофоном слева -->
         <div class="chat-inp-wrap">
+          <button id="micBtn" class="mic-inline-btn"
+            onclick="toggleMic()"
+            onmousedown="onMicDown()"
+            onmouseup="onMicUp()"
+            ontouchstart="onMicDown(event)"
+            ontouchend="onMicUp(event)">🎤</button>
+
           <textarea class="chat-inp" id="chatInp"
             placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
             onkeydown="handleKey(event)"
             oninput="autoResize(this)"></textarea>
+
           <div class="chat-inp-actions">
             <button class="chat-act-btn" onclick="insertMention()" title="Упомянуть">@</button>
             <button class="chat-act-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
           </div>
           <button class="send-btn" onclick="sendMsg()">➤</button>
-        </div>
-
-        <!-- Большая кнопка микрофона -->
-        <div class="mic-area">
-          <button id="micBtn" class="mic-big-btn"
-            onclick="toggleMic()"
-            onmousedown="onMicDown()"
-            onmouseup="onMicUp()"
-            ontouchstart="onMicDown(event)"
-            ontouchend="onMicUp(event)">
-            🎤
-          </button>
-          <span class="mic-hint" id="micHint">Нажми · Держи для записи</span>
         </div>
 
       </div>

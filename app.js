@@ -813,12 +813,13 @@ function onMicUp(e) {
   clearTimeout(micHoldTimer);
   if (holdActivated) {
     deactivateMic();
-    holdActivated = false;
+    // Сбрасываем с задержкой — чтобы onclick увидел флаг
+    setTimeout(() => { holdActivated = false; }, 100);
   }
 }
 
 function toggleMic() {
-  if (holdActivated) return;
+  if (holdActivated) { holdActivated = false; return; } // hold уже отработал
   if (micActive) deactivateMic();
   else activateMic();
 }
