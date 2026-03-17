@@ -220,7 +220,6 @@ io.on('connection', socket => {
     const safeCode = sanitize(code, 6).toUpperCase();
     const room = rooms[safeCode];
     if (!room) { socket.emit('error_msg', 'Комната не найдена — проверь код'); return; }
-    memberIds: [...room.members].filter(id => id !== socket.id);
     _joinRoom(socket, room, safeName, sessionId);
     
   });
@@ -255,18 +254,22 @@ io.on('connection', socket => {
     if (session) { session.roomCode = room.code; session.name = safeName; }
 
     socket.emit('room_joined', {
-      code:     room.code,
-      videoId:  room.videoId,
-      videoUrl: room.videoUrl,
-      state:    room.state,
-      time:     room.time,
-      count:    room.members.size,
-      isHost:   room.hostId === socket.id,
-      type:     room.type,
-      id: socket.id,
+      code:      room.code,
+      videoId:   room.videoId,
+      videoUrl:  room.videoUrl,
+      state:     room.state,
+      time:      room.time,
+      count:     room.members.size,
+      isHost:    room.hostId === socket.id,
+      type:      room.type,
+      memberIds: [...room.members].filter(id => id !== socket.id), // ✅ для WebRTC
     });
 
-    socket.to(room.code).emit('user_joined', { name: safeName, count: room.members.size });
+    socket.to(room.code).emit('user_joined', { 
+      name:  safeName, 
+      count: room.members.size,
+      id:    socket.id, // ✅ для WebRTC
+    });
     console.log(`[JOIN] ${safeName} → ${room.code}`);
   }
 
