@@ -516,7 +516,9 @@ function showCodePopup() {
 }
 function closePopup() { document.getElementById('codePopup').classList.remove('show'); }
 function copyRoomCode() {
-  navigator.clipboard.writeText(myRoom).then(() => {
+  const link = `${location.origin}/?room=${myRoom}`;
+  const text = `🎬 КиноВместе\nКод: ${myRoom}\nСсылка: ${link}`;
+  navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('popupCopyBtn');
     btn.textContent = '✅ Скопировано!'; btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '📋 Скопировать'; btn.classList.remove('copied'); }, 2500);
@@ -562,3 +564,22 @@ function addMsg(name, text, type) {
 
 function fmtTime(s) { s = Math.floor(s || 0); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
 function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Авто-вход по ссылке /?room=ABC123
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const roomFromUrl = params.get('room');
+  if (roomFromUrl) {
+    switchTab('join');
+    document.getElementById('codeInput').value = roomFromUrl.toUpperCase();
+  }
+});
+function shareRoom() {
+  const link = `${location.origin}/?room=${myRoom}`;
+  const text = `🎬 КиноВместе\nКод: ${myRoom}\nСсылка: ${link}`;
+  if (navigator.share) {
+    navigator.share({ title: 'КиноВместе', text, url: link });
+  } else {
+    navigator.clipboard.writeText(text).then(() => toast('🔗 Ссылка и код скопированы!', 'copy'));
+  }
+}

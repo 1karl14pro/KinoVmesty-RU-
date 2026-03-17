@@ -452,3 +452,10 @@ textarea.chat-inp:focus { border-color: var(--accent); }
 #toast.info  { background: #8b5cf6; color: #fff; }
 #toast.copy  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 #toast.err   { background: #e24b4a; color: #fff; }
+
+.share-btn {
+  padding: 5px 12px; border: 1px solid var(--green); border-radius: 8px;
+  background: transparent; color: var(--green);
+  font-family: 'Nunito', sans-serif; font-size: .75rem; cursor: pointer; transition: all .2s;
+}
+.share-btn:hover { background: rgba(6,214,160,.1); }
