@@ -627,17 +627,32 @@ function duckVolume(yes) {
   updateVolBtn();
 }
 
+const remoteAudios = {};
+
 function makePeerConn(remoteId) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  
   pc.onicecandidate = e => {
     if (e.candidate) socket.emit('rtc_ice', { to: remoteId, candidate: e.candidate });
   };
+
   pc.ontrack = e => {
-    const audio = new Audio();
+    let audio = remoteAudios[remoteId];
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.playsInline = true;
+      document.body.appendChild(audio); // держим в DOM чтобы не удалился
+      remoteAudios[remoteId] = audio;
+    }
     audio.srcObject = e.streams[0];
-    audio.play().catch(() => {});
+    audio.play().catch(err => console.warn('audio play error:', err));
   };
-  if (micStream) micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
+
+  if (micStream) {
+    micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
+  }
+
   peerConns[remoteId] = pc;
   return pc;
 }
@@ -694,4 +709,53 @@ socket.on('mic_start', ({ name }) => {
 socket.on('mic_stop', ({ from }) => {
   duckVolume(false);
   if (peerConns[from]) { peerConns[from].close(); delete peerConns[from]; }
+  if (remoteAudios[from]) { 
+    remoteAudios[from].remove(); 
+    delete remoteAudios[from]; 
+  }
 });
+
+// ============================================================
+//  INVITE POPUP
+// ============================================================
+
+function showInvitePopup() {
+  const link = `${location.origin}/?room=${myRoom}`;
+  document.getElementById('inviteLinkText').textContent = link;
+  // Тип
+  const isOpen = roomType === 'open';
+  document.getElementById('iTypeOpen').classList.toggle('active', isOpen);
+  document.getElementById('iTypeClosed').classList.toggle('active', !isOpen);
+  // Только хост может менять тип
+  document.getElementById('inviteTypeRow').style.display  = isHost ? 'flex' : 'none';
+  document.getElementById('inviteHostOnly').style.display = isHost ? 'none' : 'block';
+  document.getElementById('invitePopup').classList.add('show');
+}
+
+function closeInvitePopup() {
+  document.getElementById('invitePopup').classList.remove('show');
+}
+
+function copyInviteLink() {
+  const link = `${location.origin}/?room=${myRoom}`;
+  navigator.clipboard.writeText(link).then(() => toast('🔗 Ссылка скопирована!', 'copy'));
+}
+
+function changeRoomType(type) {
+  if (!isHost) return;
+  roomType = type;
+  socket.emit('change_room_type', { type });
+  document.getElementById('iTypeOpen').classList.toggle('active',   type === 'open');
+  document.getElementById('iTypeClosed').classList.toggle('active', type === 'closed');
+  document.getElementById('topType').textContent = type === 'open' ? '🌐 Открытая' : '🔒 Закрытая';
+  toast(type === 'open' ? '🌐 Комната теперь публичная' : '🔒 Комната теперь приватная', 'info');
+}
+
+socket.on('room_type_changed', ({ type, name }) => {
+  roomType = type;
+  document.getElementById('topType').textContent = type === 'open' ? '🌐 Открытая' : '🔒 Закрытая';
+  addLog(`${name} сменил тип комнаты на ${type === 'open' ? 'публичную' : 'приватную'}`, 'sys');
+});
+
+// Закрыть попап по клику вне
+document.getElementById('invitePopup')?.addEventListener('click', closeInvitePopup);

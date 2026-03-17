@@ -125,7 +125,7 @@
   <div class="topbar">
     <span class="logo-sm">КиноВместе</span>
     <span class="room-code-badge" id="topCode" onclick="showCodePopup()">------</span>
-    <span class="room-type-pill" id="topType">🌐</span>
+    <span class="room-type-pill" id="topType" onclick="showInvitePopup()" style="cursor:pointer">🌐</span>
     <span class="dot on" id="dot"></span>
     <span class="status-txt" id="statusTxt">Онлайн</span>
     <span class="members-count" id="membersCount">👥 1</span>
@@ -225,4 +225,38 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
 </body>
+<!-- INVITE POPUP -->
+<div id="invitePopup">
+  <div class="invite-popup-card" onclick="stopEv(event)">
+    <div class="invite-popup-title">Пригласить друзей</div>
+
+    <div class="invite-type-row" id="inviteTypeRow">
+      <div class="invite-type-opt active" id="iTypeOpen" onclick="changeRoomType('open')">
+        <div class="invite-type-icon">🌐</div>
+        <div class="invite-type-name">Публичная</div>
+      </div>
+      <div class="invite-type-opt" id="iTypeClosed" onclick="changeRoomType('closed')">
+        <div class="invite-type-icon">🔒</div>
+        <div class="invite-type-name">Приватная</div>
+      </div>
+    </div>
+
+    <div class="invite-host-only" id="inviteHostOnly" style="display:none">
+      <span>⚠️ Только хост может менять тип</span>
+    </div>
+
+    <div class="invite-link-box">
+      <div class="invite-link-label">Приглашение</div>
+      <div class="invite-link-row">
+        <span class="invite-link-text" id="inviteLinkText"></span>
+        <button class="invite-link-copy" onclick="copyInviteLink()">📋</button>
+      </div>
+    </div>
+
+    <div class="invite-btns">
+      <button class="btn btn-copy" onclick="shareRoom()">🔗 Поделиться</button>
+      <button class="btn btn-watch" onclick="closeInvitePopup()">Закрыть</button>
+    </div>
+  </div>
+</div>
 </html>

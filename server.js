@@ -290,7 +290,12 @@ io.on('connection', socket => {
     const room = rooms[socket.roomCode];
     if (room && socket.id === room.hostId && typeof time === 'number') room.time = time;
   });
-
+  socket.on('change_room_type', ({ type }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || socket.id !== room.hostId) return;
+    room.type = type === 'open' ? 'open' : 'closed';
+    io.to(socket.roomCode).emit('room_type_changed', { type: room.type, name: socket.userName });
+  });
   socket.on('chat', ({ text }) => {
     const safeText = sanitize(text, 500);
     if (!safeText || !socket.roomCode) return;
