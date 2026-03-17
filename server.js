@@ -16,6 +16,9 @@ const io     = new Server(server, { cors: { origin: '*' } });
 const PORT   = process.env.PORT || 8080;
 
 app.use(express.static(path.join(__dirname)));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 app.use(express.json());
 app.get('/health', (req, res) => res.send('ok'));
 
