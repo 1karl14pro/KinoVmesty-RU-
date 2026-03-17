@@ -387,9 +387,8 @@ input::placeholder { color: var(--muted); }
 /* ===== CHAT INPUT ===== */
 .chat-inp-area {
   padding: 10px;
-  border-top: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
   gap: 6px;
   position: relative;
   flex-shrink: 0;
@@ -536,7 +535,6 @@ textarea.chat-inp:focus { border-color: var(--accent); }
   align-items: center;
   gap: 5px;
   padding: 6px 0 2px;
-  border-top: 1px solid var(--border);
 }
 .mic-big-btn {
   width: 52px;
