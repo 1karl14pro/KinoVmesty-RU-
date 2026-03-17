@@ -411,9 +411,13 @@ textarea.chat-inp {
   line-height: 1.4;
   transition: border-color .2s;
   width: 100%;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
 }
 textarea.chat-inp:focus { border-color: var(--accent); }
-
+textarea.chat-inp::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
 .chat-inp-actions {
   position: absolute;
   right: 48px;
