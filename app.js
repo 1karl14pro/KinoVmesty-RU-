@@ -364,6 +364,9 @@ async function loadRutube(videoId) {
       setTimeout(() => overlay.classList.remove('force-show'), 2000);
     });
     hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) showError('Ошибка HLS — ' + d.type); });
+  }
+  if (data.title) {
+  document.getElementById('videoTitleTxt').textContent = data.title;
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = hlsUrl; showLoading(false);
   } else { showError('Браузер не поддерживает HLS.'); }
@@ -512,13 +515,25 @@ function updateVolBtn() {
 
 function toggleFullscreen() {
   const wrap = document.getElementById('videoWrap');
-  if (!document.fullscreenElement) wrap.requestFullscreen().catch(() => toast('Фуллскрин недоступен', 'err'));
-  else document.exitFullscreen();
+  const el = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!el) {
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+    if (req) req.call(wrap);
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document);
+  }
 }
-document.addEventListener('fullscreenchange', () => {
+
+document.addEventListener('fullscreenchange', updateFsBtn);
+document.addEventListener('webkitfullscreenchange', updateFsBtn);
+
+function updateFsBtn() {
   const btn = document.querySelector('.fs-btn');
-  if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
-});
+  const inFs = document.fullscreenElement || document.webkitFullscreenElement;
+  if (btn) btn.textContent = inFs ? '✕' : '⛶';
+}
+
 
 // ============================================================
 //  ЗАГРУЗКА / ОШИБКА

@@ -458,3 +458,38 @@ textarea.chat-inp:focus { border-color: var(--accent); }
 #toast.info  { background: #8b5cf6; color: #fff; }
 #toast.copy  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 #toast.err   { background: #e24b4a; color: #fff; }
+
+/* ===== МОБИЛЬНЫЙ UI ===== */
+.video-title-txt {
+  flex: 1; font-size: .75rem; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  /* Топбар компактный */
+  .topbar { padding: 6px 10px; gap: 6px; overflow: hidden; }
+  .logo-sm { display: none; }
+  .status-txt { display: none; }
+  .share-btn { padding: 4px 8px; font-size: .7rem; }
+  .exit-btn  { padding: 4px 8px; font-size: .7rem; }
+  .host-badge { padding: 3px 6px; font-size: .65rem; }
+  .host-badge::after { content: ''; }
+
+  /* Лейаут — видео сверху фиксированное, чат снизу */
+  .content { flex-direction: column; }
+  .video-side { flex: none; height: 35vh; }
+  .video-wrap { height: 35vh; }
+  .sidebar {
+    width: 100%;
+    flex: 1;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Убираем URL строку */
+  .ctrl-url { display: none; }
+
+  /* Чат инпут */
+  .chat-inp-area { padding: 8px; }
+}

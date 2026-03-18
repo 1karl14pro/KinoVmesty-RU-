@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>КиноВместе 🎬</title>
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -181,13 +181,12 @@
     <span class="logo-sm">КиноВместе</span>
     <span class="room-code-badge" id="topCode" onclick="showCodePopup()">------</span>
     <span class="room-type-pill" id="topType" onclick="showInvitePopup()" style="cursor:pointer">🌐</span>
-    <span class="dot on" id="dot"></span>
-    <span class="status-txt" id="statusTxt">Онлайн</span>
-    <span class="members-count" id="membersCount">👥 1</span>
-    <span class="host-badge" id="hostBadge">👑 Хост</span>
     <span class="spacer"></span>
-    <button class="share-btn" onclick="shareRoom()">🔗 Поделиться</button>
-    <button class="exit-btn" onclick="location.reload()">← Выйти</button>
+    <span class="dot on" id="dot"></span>
+    <span class="members-count" id="membersCount">👥 1</span>
+    <span class="host-badge" id="hostBadge">👑</span>
+    <button class="share-btn" onclick="shareRoom()">🔗</button>
+    <button class="exit-btn" onclick="location.reload()">✕</button>
   </div>
 
   <div class="content">
@@ -232,8 +231,8 @@
       </div>
 
       <div class="bottom-bar">
-        <span class="ctrl-url" id="urlDisplay"></span>
-        <button class="logs-toggle-btn" onclick="toggleLogs()" title="Логи событий">•••</button>
+        <span class="video-title-txt" id="videoTitleTxt"></span>
+        <button class="logs-toggle-btn" onclick="toggleLogs()">•••</button>
       </div>
 
       <div class="logs-panel" id="logsPanel">

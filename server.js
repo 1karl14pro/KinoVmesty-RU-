@@ -105,8 +105,11 @@ app.get('/api/rutube-hls', async (req, res) => {
     console.log('[RUTUBE] live_streams:', JSON.stringify(data?.live_streams));
 
     if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. Структура: ' + JSON.stringify(Object.keys(data || {})) });
-    res.json({ hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}` });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ 
+      hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}`,
+      title: data?.title || ''
+    });
+   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/hls-proxy', async (req, res) => {
