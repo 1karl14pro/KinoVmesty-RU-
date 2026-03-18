@@ -106,42 +106,12 @@ app.get('/api/rutube-hls', async (req, res) => {
 
     if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. Структура: ' + JSON.stringify(Object.keys(data || {})) });
     res.json({ 
-      hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}`,
+      hlsUrl: `https://wakeup.su/hls?u=${encodeURIComponent(hlsUrl)}`,
       title: data?.title || ''
     });
    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/hls-proxy', async (req, res) => {
-  const targetUrl = req.query.u;
-  if (!targetUrl) return res.status(400).send('no url');
-  let parsed;
-  try { parsed = new urlMod.URL(targetUrl); } catch { return res.status(400).send('bad url'); }
-  if (!parsed.hostname.endsWith('rutube.ru') && 
-    !parsed.hostname.endsWith('cdnvideo.ru') && 
-    !parsed.hostname.endsWith('video.rutube.ru') &&
-    !parsed.hostname.endsWith('rtbcdn.ru')) {
-    return res.status(403).send('forbidden domain');
-  }
-  try {
-    const { status, headers, body } = await httpsGet(targetUrl);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=30');
-    if (targetUrl.includes('.m3u8') || (headers['content-type'] || '').includes('mpegurl')) {
-      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-      const base = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
-      const text = body.toString('utf8').split('\n').map(line => {
-        const l = line.trim();
-        if (!l || l.startsWith('#')) return l;
-        const abs = l.startsWith('http') ? l : base + l;
-        return `/api/hls-proxy?u=${encodeURIComponent(abs)}`;
-      }).join('\n');
-      return res.send(text);
-    }
-    res.setHeader('Content-Type', headers['content-type'] || 'video/mp2t');
-    res.status(status).send(body);
-  } catch (e) { res.status(500).send(e.message); }
-});
 
 // ─── Определение платформы и ID ───────────────────────────────────────────────
 function extractVideo(url) {
