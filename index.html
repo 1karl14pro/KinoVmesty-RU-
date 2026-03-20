@@ -222,8 +222,25 @@
                   oninput="onVolumeChange(this)"
                   onclick="stopEv(event)"/>
               </div>
+              <button class="prev-ep-btn" id="prevEpBtn" onclick="stopEv(event);playPrevEpisode()" title="Предыдущая серия" style="display:none">⏮</button>
+              <button class="next-ep-btn" id="nextEpBtn" onclick="stopEv(event);skipToNext()" title="Следующая серия" style="display:none">⏭</button>
+              <button class="fs-chat-btn" id="fsChatBtn" onclick="stopEv(event);toggleFsChat()" title="Чат">💬</button>
               <button class="fs-btn" onclick="stopEv(event);toggleFullscreen()">⛶</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Чат в фуллскрине -->
+        <div class="fullscreen-chat" id="fullscreenChat">
+          <div class="fc-hdr">
+            ЧАТ <span class="msg-count" id="fcMsgCount">0</span>
+            <button class="fc-close" onclick="toggleFsChat()">✕</button>
+          </div>
+          <div class="fc-msgs" id="fcMsgs"></div>
+          <div class="fc-inp-wrap">
+            <textarea class="fc-inp" id="fcInp" placeholder="Напиши…" rows="1"
+              onkeydown="handleFcKey(event)" oninput="autoResize(this)"></textarea>
+            <button class="fc-send" onclick="sendFcMsg()">➤</button>
           </div>
         </div>
 
@@ -256,6 +273,8 @@
     <div class="sidebar">
       <div class="sidebar-hdr">
         ЧАТ <span class="msg-count" id="msgCount">0</span>
+        <button class="sidebar-toggle-btn" id="sidebarToggleBtn"
+                onclick="toggleSidebar()" title="Скрыть чат">‹</button>
       </div>
 
       <div class="msgs" id="msgs"></div>
@@ -267,10 +286,20 @@
             📋 ОЧЕРЕДЬ
             <span class="queue-count-badge" id="queueCount">0</span>
           </span>
-          <button class="queue-skip-btn" id="queueSkipBtn"
-                  onclick="skipToNext()" style="display:none">
-            ⏭ Следующее
-          </button>
+          <div class="queue-hdr-actions">
+            <button class="auto-playlist-btn active" id="autoPlaylistBtn"
+                    onclick="toggleAutoPlaylist()" title="Автоплейлист сериала">
+              🤖 <span class="btn-label">Авто</span>
+            </button>
+            <button class="queue-skip-btn" id="queueSkipBtn"
+                    onclick="skipToNext()" style="display:none">
+              ⏭ <span class="btn-label">Далее</span>
+            </button>
+            <button class="queue-clear-btn" id="queueClearBtn"
+                    onclick="clearQueue()" style="display:none" title="Очистить очередь">
+              🗑
+            </button>
+          </div>
         </div>
         <div class="queue-add-row">
           <input id="queueUrlInp" type="text" class="queue-url-inp"
@@ -321,13 +350,21 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
-<script src="app.js"></script>
+<!-- Порядок важен: globals → utils → затем модули → app последним -->
+<script src="/js/globals.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/player.js"></script>
+<script src="/js/chat.js"></script>
+<script src="/js/queue.js"></script>
+<script src="/js/playlist.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
 <script>
-  // if ('serviceWorker' in navigator) {
-  //   navigator.serviceWorker.register('/sw.js')
-  //     .then(() => console.log('SW registered'))
-  //     .catch(e => console.warn('SW error:', e));
-  // }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(e => console.warn('SW error:', e));
+  }
 </script>
 </body>
 </html>
