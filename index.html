@@ -20,7 +20,9 @@
 </head>
 <body>
 
-<!-- ===== SETUP ===== -->
+<!-- ═══════════════════════════════════════════════════════
+     ЭКРАН ВХОДА
+════════════════════════════════════════════════════════ -->
 <div id="setup">
   <div class="logo">КиноВместе 🎬</div>
   <p class="tagline">Смотри видео с друзьями в реальном времени — Rutube, YouTube, VK Видео</p>
@@ -31,15 +33,13 @@
     <button class="stab" onclick="switchTab('browse')">🌐 Открытые комнаты</button>
   </div>
 
-  <!-- ТАБ: Создать комнату -->
+  <!-- Создать комнату -->
   <div class="tab-panel active" id="tab-create">
     <div class="card wide-card">
       <div class="inp-group">
         <label>Твой ник</label>
         <input id="nameCreate" type="text" placeholder="Как тебя называть?" maxlength="32"/>
       </div>
-
-      <!-- Выбор платформы -->
       <div class="inp-group">
         <label>Платформа</label>
         <div class="platform-grid">
@@ -54,15 +54,11 @@
           </div>
         </div>
       </div>
-
-      <!-- Инпут ссылки -->
       <div class="inp-group">
         <label id="urlLabel">Ссылка на видео Rutube</label>
         <input id="urlCreate" type="text" placeholder="https://rutube.ru/video/..."/>
         <div class="platform-hint" id="platformHint">Вставь ссылку на видео с Rutube</div>
       </div>
-
-      <!-- Тип комнаты -->
       <div class="room-type-row">
         <div class="room-type-opt active" id="typeOpen" onclick="selectType('open')">
           <div class="rtype-icon">🌐</div>
@@ -81,17 +77,15 @@
           <div class="rtype-check">✓</div>
         </div>
       </div>
-
       <div class="inp-group" id="titleGroup">
         <label>Название комнаты</label>
         <input id="titleCreate" type="text" placeholder="Например: смотрим аниме 🍿" maxlength="60"/>
       </div>
-
       <button class="btn btn-primary" id="createBtn" onclick="createRoom()">✨ Создать комнату</button>
     </div>
   </div>
 
-  <!-- ТАБ: Войти по коду -->
+  <!-- Войти по коду -->
   <div class="tab-panel" id="tab-join">
     <div class="card wide-card">
       <div class="inp-group">
@@ -111,7 +105,7 @@
     </div>
   </div>
 
-  <!-- ТАБ: Открытые комнаты -->
+  <!-- Открытые комнаты -->
   <div class="tab-panel" id="tab-browse">
     <div class="card wide-card">
       <div class="inp-group">
@@ -131,7 +125,9 @@
   </div>
 </div>
 
-<!-- ===== CODE POPUP ===== -->
+<!-- ═══════════════════════════════════════════════════════
+     ПОПАП — КОД КОМНАТЫ
+════════════════════════════════════════════════════════ -->
 <div id="codePopup">
   <div class="popup-card">
     <div class="popup-title">Комната создана! 🎉</div>
@@ -139,14 +135,16 @@
     <div class="popup-type-badge" id="popupTypeBadge">🌐 Открытая</div>
     <div class="popup-hint">Отправь код другу — он введёт его и окажется рядом</div>
     <div class="popup-btns">
-      <button class="btn btn-copy" onclick="copyCode()">📋 Код</button>
-      <button class="btn btn-copy" onclick="copyLink()">🔗 Ссылка</button>
+      <button class="btn btn-copy"  onclick="copyCode()">📋 Код</button>
+      <button class="btn btn-copy"  onclick="copyLink()">🔗 Ссылка</button>
       <button class="btn btn-watch" onclick="closePopup()">▶ Смотреть!</button>
     </div>
   </div>
 </div>
 
-<!-- ===== INVITE POPUP ===== -->
+<!-- ═══════════════════════════════════════════════════════
+     ПОПАП — ПРИГЛАШЕНИЕ
+════════════════════════════════════════════════════════ -->
 <div id="invitePopup">
   <div class="invite-popup-card" onclick="stopEv(event)">
     <div class="invite-popup-title">Пригласить друзей</div>
@@ -171,25 +169,32 @@
       </div>
     </div>
     <div class="invite-btns">
-      <button class="btn btn-copy" onclick="shareRoom()">🔗 Поделиться</button>
+      <button class="btn btn-copy"  onclick="shareRoom()">🔗 Поделиться</button>
       <button class="btn btn-watch" onclick="closeInvitePopup()">Закрыть</button>
     </div>
   </div>
 </div>
 
-<!-- ===== APP ===== -->
+<!-- ═══════════════════════════════════════════════════════
+     ГЛАВНЫЙ ЭКРАН
+════════════════════════════════════════════════════════ -->
 <div id="app">
 
+  <!-- Топбар -->
   <div class="topbar">
     <span class="logo-sm">КиноВместе</span>
     <span class="room-code-badge" id="topCode" onclick="showCodePopup()">------</span>
-    <span class="room-type-pill" id="topType" onclick="showInvitePopup()" style="cursor:pointer">🌐</span>
+    <span class="room-type-pill"  id="topType" onclick="showInvitePopup()" style="cursor:pointer">🌐</span>
     <span class="spacer"></span>
     <span class="dot on" id="dot"></span>
     <span class="members-count" id="membersCount">👥 1</span>
     <span class="host-badge" id="hostBadge">👑</span>
-    <button class="share-btn" onclick="shareRoom()">🔗</button>
-    <button class="exit-btn" onclick="location.reload()">✕</button>
+    <button class="queue-topbar-btn" id="queueTopbarBtn" onclick="toggleQueue()" title="Очередь видео">
+      📋 <span class="queue-badge" id="queueBadge" style="display:none">0</span>
+    </button>
+    <button class="share-btn"  onclick="shareRoom()">🔗</button>
+    <button class="theme-btn"  onclick="toggleTheme()" id="themeBtn">🌙</button>
+    <button class="exit-btn"   onclick="location.reload()">✕</button>
   </div>
 
   <div class="content">
@@ -247,21 +252,45 @@
       </div>
     </div>
 
-    <!-- Чат -->
+    <!-- Сайдбар: чат + очередь -->
     <div class="sidebar">
       <div class="sidebar-hdr">
         ЧАТ <span class="msg-count" id="msgCount">0</span>
       </div>
+
       <div class="msgs" id="msgs"></div>
 
+      <!-- Панель очереди (скрыта по умолчанию) -->
+      <div class="queue-panel" id="queuePanel">
+        <div class="queue-panel-hdr">
+          <span class="queue-panel-title">
+            📋 ОЧЕРЕДЬ
+            <span class="queue-count-badge" id="queueCount">0</span>
+          </span>
+          <button class="queue-skip-btn" id="queueSkipBtn"
+                  onclick="skipToNext()" style="display:none">
+            ⏭ Следующее
+          </button>
+        </div>
+        <div class="queue-add-row">
+          <input id="queueUrlInp" type="text" class="queue-url-inp"
+                 placeholder="Ссылка на видео…"
+                 onkeydown="if(event.key==='Enter') addToQueueFromInput()"/>
+          <button class="queue-paste-btn" onclick="pasteQueueUrl()" title="Вставить">📋</button>
+          <button class="queue-add-btn"   onclick="addToQueueFromInput()">+</button>
+        </div>
+        <div class="queue-list" id="queueList">
+          <div class="queue-empty">
+            <div class="queue-empty-icon">📭</div>
+            <div class="queue-empty-text">Очередь пуста</div>
+            <div class="queue-empty-hint">Вставь ссылку выше и нажми +</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Инпут чата -->
       <div class="chat-inp-area">
-
-        <!-- Дропдаун упоминаний -->
         <div class="mention-dropdown" id="mentionDropdown"></div>
-
-
-
-        <!-- Строка ввода с микрофоном слева -->
         <div class="chat-inp-wrap">
           <button id="micBtn" class="mic-inline-btn"
             onclick="toggleMic()"
@@ -269,19 +298,16 @@
             onmouseup="onMicUp()"
             ontouchstart="onMicDown(event)"
             ontouchend="onMicUp(event)">🎤</button>
-
           <textarea class="chat-inp" id="chatInp"
             placeholder="Напиши что-нибудь…" rows="1" maxlength="500"
             onkeydown="handleKey(event)"
             oninput="autoResize(this)"></textarea>
-
           <div class="chat-inp-actions">
             <button class="chat-act-btn" onclick="insertMention()" title="Упомянуть">@</button>
             <button class="chat-act-btn" onclick="toggleEmojiPicker()" title="Эмодзи">😊</button>
           </div>
           <button class="send-btn" onclick="sendMsg()">➤</button>
         </div>
-          <!-- Эмодзи пикер -->
         <div class="emoji-picker" id="emojiPicker">
           <div class="emoji-grid" id="emojiGrid"></div>
         </div>
@@ -297,11 +323,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registered'))
-      .catch(e => console.warn('SW error:', e));
-  }
+  // if ('serviceWorker' in navigator) {
+  //   navigator.serviceWorker.register('/sw.js')
+  //     .then(() => console.log('SW registered'))
+  //     .catch(e => console.warn('SW error:', e));
+  // }
 </script>
 </body>
 </html>

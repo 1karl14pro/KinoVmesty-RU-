@@ -1,7 +1,4 @@
-// КиноВместе — сервер v5
-// npm install express socket.io
-// node server.js
-
+// КиноВместе — server.js
 const express  = require('express');
 const http     = require('http');
 const https    = require('https');
@@ -15,14 +12,14 @@ const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
 const PORT   = process.env.PORT || 8080;
 
+app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(path.join(__dirname)));
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.use(express.json());
 app.get('/health', (req, res) => res.send('ok'));
 
 // ─── Сессии ───────────────────────────────────────────────────────────────────
+
 const sessions = new Map();
 
 function createSession(name) {
@@ -37,7 +34,8 @@ setInterval(() => {
   for (const [id, s] of sessions) if (s.createdAt < cutoff) sessions.delete(id);
 }, 60 * 60 * 1000);
 
-// ─── REST ──────────────────────────────────────────────────────────────────────
+// ─── REST API ─────────────────────────────────────────────────────────────────
+
 app.post('/api/session', (req, res) => {
   const { sessionId, name } = req.body;
   const existing = getSession(sessionId);
@@ -56,82 +54,109 @@ app.get('/api/rooms', (req, res) => {
   res.json(list);
 });
 
-// ─── HTTPS GET ─────────────────────────────────────────────────────────────────
+// ─── HTTPS-хелпер ─────────────────────────────────────────────────────────────
+
 function httpsGet(targetUrl, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new urlMod.URL(targetUrl);
     https.get({
       hostname: parsed.hostname,
-      path: parsed.pathname + parsed.search,
+      path:     parsed.pathname + parsed.search,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        'Referer':    'https://rutube.ru/',
-        'Origin':     'https://rutube.ru',
-        'Accept':     '*/*',
+        'Referer': 'https://rutube.ru/', 'Origin': 'https://rutube.ru', 'Accept': '*/*',
         ...extraHeaders,
-      }
+      },
     }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+      res.on('end',  () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
     }).on('error', reject);
   });
 }
 
-// ─── Rutube HLS ────────────────────────────────────────────────────────────────
+// ─── Получение заголовка видео ────────────────────────────────────────────────
+// Вызывается при добавлении в очередь, чтобы показывать название вместо URL.
+
+async function fetchVideoTitle(platform, videoId, videoUrl) {
+  try {
+    if (platform === 'rutube') {
+      const apiUrl = `https://rutube.ru/api/play/options/${videoId}/?no_404=true&format=json`;
+      const { body } = await httpsGet(apiUrl);
+      const data = JSON.parse(body.toString());
+      return data?.title || null;
+    }
+    if (platform === 'youtube') {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+      const { body } = await httpsGet(oembedUrl);
+      const data = JSON.parse(body.toString());
+      return data?.title || null;
+    }
+    // VK — без авторизации заголовок не получить, возвращаем null
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Rutube HLS ───────────────────────────────────────────────────────────────
+
 app.get('/api/rutube-hls', async (req, res) => {
   const id = String(req.query.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
   if (!id) return res.status(400).json({ error: 'no id' });
   try {
-    const apiUrl = `https://wakeup.su/rutube-proxy/rutube?id=${id}`;
+    const apiUrl = `https://rutube.ru/api/play/options/${id}/?no_404=true&referer=https%3A%2F%2Frutube.ru&format=json`;
     const { body } = await httpsGet(apiUrl);
-    const data = JSON.parse(body.toString());
-
-    // Пробуем все возможные поля где может быть HLS
-    const hlsUrl =
-      data?.video_balancer?.m3u8 ||
-      data?.video_balancer?.m3u8_url ||
-      data?.live_streams?.hls ||
-      data?.hls_url ||
-      data?.m3u8 ||
-      // Ищем в массиве sources если есть
-      (Array.isArray(data?.sources) && data.sources.find(s => s.url?.includes('.m3u8'))?.url) ||
-      null;
-
-    // Логируем весь ответ для диагностики
-    console.log('[RUTUBE] keys:', Object.keys(data || {}));
-    console.log('[RUTUBE] video_balancer:', JSON.stringify(data?.video_balancer));
-    console.log('[RUTUBE] hls_url:', data?.hls_url);
-    console.log('[RUTUBE] live_streams:', JSON.stringify(data?.live_streams));
-
+    const data   = JSON.parse(body.toString());
+    const hlsUrl = data?.video_balancer?.m3u8 || null;
     if (!hlsUrl) return res.status(404).json({ error: 'HLS не найден. Структура: ' + JSON.stringify(Object.keys(data || {})) });
-    res.json({ 
-      hlsUrl: `https://wakeup.su/hls?u=${encodeURIComponent(hlsUrl)}`,
-      title: data?.title || ''
-    });
-   } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ hlsUrl: `/api/hls-proxy?u=${encodeURIComponent(hlsUrl)}`, title: data?.title || '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/hls-proxy', async (req, res) => {
+  const targetUrl = req.query.u;
+  if (!targetUrl) return res.status(400).send('no url');
+  let parsed;
+  try { parsed = new urlMod.URL(targetUrl); } catch { return res.status(400).send('bad url'); }
+  const allowed = ['rutube.ru', 'cdnvideo.ru', 'rtbcdn.ru', 'video.rutube.ru', 'bl.rutube.ru'];
+  if (!allowed.some(d => parsed.hostname.endsWith(d))) return res.status(403).send('forbidden domain');
+  try {
+    const { status, headers, body } = await httpsGet(targetUrl);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=30');
+    if (targetUrl.includes('.m3u8') || (headers['content-type'] || '').includes('mpegurl')) {
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      const base = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+      const text = body.toString('utf8').split('\n').map(line => {
+        const l = line.trim();
+        if (!l || l.startsWith('#')) return l;
+        const abs = l.startsWith('http') ? l : base + l;
+        return `/api/hls-proxy?u=${encodeURIComponent(abs)}`;
+      }).join('\n');
+      return res.send(text);
+    }
+    res.setHeader('Content-Type', headers['content-type'] || 'video/mp2t');
+    res.status(status).send(body);
+  } catch (e) { res.status(500).send(e.message); }
+});
 
 // ─── Определение платформы и ID ───────────────────────────────────────────────
+
 function extractVideo(url) {
-  // YouTube
-  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  let m;
+  m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
   if (m) return { platform: 'youtube', id: m[1] };
-
-  // VK Video
-  m = url.match(/vkvideo\.ru\/(?:playlist\/[^/]+\/)?video(-?\d+)_(\d+)/) || 
+  m = url.match(/vkvideo\.ru\/(?:playlist\/[^/]+\/)?video(-?\d+)_(\d+)/) ||
       url.match(/vk\.com\/(?:playlist\/[^/]+\/)?video(-?\d+)_(\d+)/);
-      if (m) return { platform: 'vk', id: `${m[1]}_${m[2]}` };
-
-  // Rutube
+  if (m) return { platform: 'vk', id: `${m[1]}_${m[2]}` };
   m = url.match(/rutube\.ru\/(?:video|play\/embed)\/([a-zA-Z0-9_-]+)/);
   if (m) return { platform: 'rutube', id: m[1] };
-
   return null;
 }
 
 // ─── Хранилище комнат ─────────────────────────────────────────────────────────
+
 const rooms = {};
 
 function makeCode() {
@@ -144,29 +169,45 @@ function sanitize(str, max = 300) {
   return str.trim().slice(0, max);
 }
 
+// ─── Синхронизация времени ────────────────────────────────────────────────────
+
+const syncIntervals = {};
+
+function startSyncInterval(roomCode) {
+  if (syncIntervals[roomCode]) return;
+  syncIntervals[roomCode] = setInterval(() => {
+    const room = rooms[roomCode];
+    if (!room || room.members.size === 0) { stopSyncInterval(roomCode); return; }
+    if (room.state !== 'playing') return;
+    io.to(roomCode).emit('sync_time', { time: room.time, state: room.state });
+  }, 3000);
+}
+
+function stopSyncInterval(roomCode) {
+  if (syncIntervals[roomCode]) { clearInterval(syncIntervals[roomCode]); delete syncIntervals[roomCode]; }
+}
+
 // ─── Socket.IO ────────────────────────────────────────────────────────────────
+
 io.on('connection', socket => {
   console.log(`[+] ${socket.id}`);
 
   socket.on('auth', ({ sessionId }) => {
     const session = getSession(sessionId);
     if (!session) { socket.emit('auth_fail'); return; }
-    socket.sessionId = sessionId;
-    socket.userName  = session.name;
+    socket.sessionId = sessionId; socket.userName = session.name;
     if (session.roomCode && rooms[session.roomCode]) {
-      socket.emit('session_restore', { roomCode: session.roomCode, name: session.name });
-    } else {
-      socket.emit('auth_ok', { name: session.name });
-    }
+      const title = rooms[session.roomCode]?.title || session.roomCode;
+      socket.emit('session_restore', { roomCode: session.roomCode, name: session.name, title });
+    } else { socket.emit('auth_ok', { name: session.name }); }
   });
 
   socket.on('create_room', ({ name, videoUrl, type, title, sessionId }) => {
-    const safeName  = sanitize(name, 32) || 'Хозяин';
+    const safeName  = sanitize(name, 32)  || 'Хозяин';
     const safeUrl   = sanitize(videoUrl, 500);
     const safeType  = type === 'open' ? 'open' : 'closed';
     const safeTitle = sanitize(title, 60) || safeName + ' смотрит';
-
-    const video = extractVideo(safeUrl);
+    const video     = extractVideo(safeUrl);
     if (!video) { socket.emit('error_msg', 'Не могу распознать ссылку. Поддерживаются YouTube, VK Видео, Rutube'); return; }
 
     const code = makeCode();
@@ -177,16 +218,13 @@ io.on('connection', socket => {
       state: 'paused', time: 0,
       members: new Set([socket.id]),
       names: { [socket.id]: safeName },
+      queue: [],
     };
-
     socket.join(code);
-    socket.roomCode  = code;
-    socket.userName  = safeName;
-    socket.sessionId = sessionId;
-
+    socket.roomCode = code; socket.userName = safeName; socket.sessionId = sessionId;
     const session = getSession(sessionId);
     if (session) { session.roomCode = code; session.name = safeName; }
-
+    startSyncInterval(code);
     socket.emit('room_created', { code, videoId: video.id, videoUrl: safeUrl, platform: video.platform, type: safeType });
     console.log(`[ROOM] ${code} (${safeType}) ${video.platform} — ${safeName}`);
   });
@@ -216,32 +254,30 @@ io.on('connection', socket => {
   });
 
   function _joinRoom(socket, room, safeName, sessionId) {
-    room.members.add(socket.id);
-    room.names[socket.id] = safeName;
+    room.members.add(socket.id); room.names[socket.id] = safeName;
     socket.join(room.code);
-    socket.roomCode  = room.code;
-    socket.userName  = safeName;
-    socket.sessionId = sessionId;
-
+    socket.roomCode = room.code; socket.userName = safeName; socket.sessionId = sessionId;
     const session = getSession(sessionId);
     if (session) { session.roomCode = room.code; session.name = safeName; }
-
+    startSyncInterval(room.code);
     socket.emit('room_joined', {
-      code:      room.code,
-      videoId:   room.videoId,
-      videoUrl:  room.videoUrl,
-      platform:  room.platform,
-      state:     room.state,
-      time:      room.time,
-      count:     room.members.size,
-      isHost:    room.hostId === socket.id,
-      type:      room.type,
+      code: room.code, videoId: room.videoId, videoUrl: room.videoUrl, platform: room.platform,
+      state: room.state, time: room.time, count: room.members.size,
+      isHost: room.hostId === socket.id, type: room.type,
       membersList: [...room.members].filter(id => id !== socket.id).map(id => ({ id, name: room.names[id] })),
+      queue: room.queue,
     });
-
     socket.to(room.code).emit('user_joined', { name: safeName, count: room.members.size, id: socket.id });
     console.log(`[JOIN] ${safeName} → ${room.code}`);
   }
+
+  socket.on('time_update', ({ time }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || socket.id !== room.hostId) return;
+    if (typeof time !== 'number' || !isFinite(time)) return;
+    room.time = time;
+    socket.to(socket.roomCode).emit('sync_time', { time, state: room.state });
+  });
 
   socket.on('player_action', ({ action, time }) => {
     const room = rooms[socket.roomCode];
@@ -252,11 +288,6 @@ io.on('connection', socket => {
     if (action === 'pause') room.state = 'paused';
     if (action === 'seek')  room.state = 'paused';
     socket.to(socket.roomCode).emit('player_action', { action, time: room.time, name: socket.userName });
-  });
-
-  socket.on('time_update', ({ time }) => {
-    const room = rooms[socket.roomCode];
-    if (room && socket.id === room.hostId && typeof time === 'number') room.time = time;
   });
 
   socket.on('change_room_type', ({ type }) => {
@@ -272,22 +303,94 @@ io.on('connection', socket => {
     socket.to(socket.roomCode).emit('chat', { name: socket.userName, text: safeText });
   });
 
-  socket.on('mic_start', () => {
-    socket.to(socket.roomCode).emit('mic_start', { from: socket.id, name: socket.userName });
-  });
-  socket.on('mic_stop', () => {
-    socket.to(socket.roomCode).emit('mic_stop', { from: socket.id });
-  });
+  socket.on('mic_start', () => socket.to(socket.roomCode).emit('mic_start', { from: socket.id, name: socket.userName }));
+  socket.on('mic_stop',  () => socket.to(socket.roomCode).emit('mic_stop',  { from: socket.id }));
   socket.on('rtc_offer',  ({ to, offer })     => io.to(to).emit('rtc_offer',  { from: socket.id, offer }));
   socket.on('rtc_answer', ({ to, answer })    => io.to(to).emit('rtc_answer', { from: socket.id, answer }));
   socket.on('rtc_ice',    ({ to, candidate }) => io.to(to).emit('rtc_ice',    { from: socket.id, candidate }));
+
+  // ── Очередь — теперь с получением заголовка видео ──────────────────────────
+
+  socket.on('queue_add', async ({ videoUrl }) => {
+    const room = rooms[socket.roomCode];
+    if (!room) return;
+    const safeUrl = sanitize(videoUrl, 500);
+    const vid     = extractVideo(safeUrl);
+    if (!vid) { socket.emit('error_msg', 'Не могу распознать ссылку'); return; }
+    if (room.queue.length >= 50) { socket.emit('error_msg', 'Очередь заполнена (макс. 50)'); return; }
+
+    // Сначала добавляем с URL, потом обновим title асинхронно
+    const item = {
+      id:        crypto.randomBytes(8).toString('hex'),
+      videoUrl:  safeUrl,
+      videoId:   vid.id,
+      platform:  vid.platform,
+      title:     null,          // заполним ниже
+      addedBy:   socket.userName,
+      addedById: socket.id,
+    };
+    room.queue.push(item);
+    io.to(room.code).emit('queue_update', { queue: room.queue });
+
+    // Асинхронно получаем заголовок и обновляем очередь
+    const title = await fetchVideoTitle(vid.platform, vid.id, safeUrl);
+    if (title) {
+      item.title = title;
+      io.to(room.code).emit('queue_update', { queue: room.queue });
+    }
+
+    console.log(`[QUEUE+] ${socket.userName} → ${room.code}: ${vid.platform}/${vid.id} "${title || ''}"`);
+  });
+
+  socket.on('queue_remove', ({ itemId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room) return;
+    const idx = room.queue.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    if (socket.id !== room.hostId && room.queue[idx].addedById !== socket.id) return;
+    room.queue.splice(idx, 1);
+    io.to(room.code).emit('queue_update', { queue: room.queue });
+  });
+
+  socket.on('queue_move', ({ itemId, direction }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || socket.id !== room.hostId) return;
+    const idx = room.queue.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= room.queue.length) return;
+    [room.queue[idx], room.queue[newIdx]] = [room.queue[newIdx], room.queue[idx]];
+    io.to(room.code).emit('queue_update', { queue: room.queue });
+  });
+
+  socket.on('queue_play_item', ({ itemId }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || socket.id !== room.hostId) return;
+    const item = room.queue.find(i => i.id === itemId);
+    if (!item) return;
+    room.queue = room.queue.filter(i => i.id !== itemId);
+    room.videoId = item.videoId; room.videoUrl = item.videoUrl; room.platform = item.platform;
+    room.state = 'paused'; room.time = 0;
+    io.to(room.code).emit('queue_play_item', { item });
+    io.to(room.code).emit('queue_update', { queue: room.queue });
+  });
+
+  socket.on('queue_next', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || socket.id !== room.hostId || !room.queue.length) return;
+    const item = room.queue.shift();
+    room.videoId = item.videoId; room.videoUrl = item.videoUrl; room.platform = item.platform;
+    room.state = 'paused'; room.time = 0;
+    io.to(room.code).emit('queue_next', { item, queue: room.queue });
+  });
+
+  // ── Отключение ────────────────────────────────────────────────────────────
 
   socket.on('disconnect', () => {
     const code = socket.roomCode;
     const room = rooms[code];
     if (!room) return;
-    room.members.delete(socket.id);
-    delete room.names[socket.id];
+    room.members.delete(socket.id); delete room.names[socket.id];
     if (room.hostId === socket.id && room.members.size > 0) {
       room.hostId = [...room.members][0];
       io.to(room.hostId).emit('you_are_host');
@@ -295,11 +398,11 @@ io.on('connection', socket => {
     socket.to(code).emit('user_left', { name: socket.userName, count: room.members.size, id: socket.id });
     console.log(`[-] ${socket.userName} из ${code}`);
     if (room.members.size === 0) {
-      setTimeout(() => { if (rooms[code]?.members.size === 0) { delete rooms[code]; console.log(`[DEL] ${code}`); } }, 600000);
+      setTimeout(() => {
+        if (rooms[code]?.members.size === 0) { delete rooms[code]; stopSyncInterval(code); console.log(`[DEL] ${code}`); }
+      }, 600000);
     }
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🎬 КиноВместе v5 запущен → http://localhost:${PORT}\n`);
-});
+server.listen(PORT, '0.0.0.0', () => { console.log(`\n🎬 КиноВместе запущен → http://localhost:${PORT}\n`); });

@@ -1,4 +1,4 @@
-const CACHE = 'kinovmeste-v1';
+const CACHE = 'kinovmeste-v4';
 const STATIC = [
   '/',
   '/index.html',
@@ -24,25 +24,23 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  if (
-    url.includes('/api/') ||
-    url.includes('/socket.io') ||
-    url.includes('.m3u8') ||
-    url.includes('.ts') ||
-    url.includes('hls-proxy')
-  ) return;
+  // Кешируем только запросы к нашему серверу
+  if (e.request.url.startsWith(self.location.origin)) {
+    // Пропускаем API и socket
+    if (e.request.url.includes('/api/') || e.request.url.includes('/socket.io')) return;
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(response => {
-        if (e.request.method === 'GET' && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE).then(cache => cache.put(e.request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-    })
-  );
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(response => {
+          if (e.request.method === 'GET' && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE).then(cache => cache.put(e.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+  }
+  // Все внешние запросы (yandex, youtube, etc) — пропускаем без кеширования
 });
