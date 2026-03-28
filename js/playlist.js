@@ -1,9 +1,17 @@
 // ============================================================
+<<<<<<< HEAD
+//  Файл: playlist.js
+//  Расположение: js/playlist.js
+//  Описание: Клиентская логика автоплейлиста сериалов.
+//  Запрашивает следующие серии у сервера, показывает UI-баннер
+//  и добавляет серии в очередь. (Содержит исправления БАГ 9, БАГ 10).
+=======
 //  playlist.js — автоплейлист сериалов (клиент)
 //  Исправления:
 //    - toast показывает корректное число (добавляемые, не все) (БАГ 10)
 //    - showPlaylistBanner реализована корректно (БАГ 9)
 //    - autoPlaylistBannerActive используется согласованно (БАГ 9)
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 // ============================================================
 
 async function tryAutoPlaylist(videoId) {
@@ -40,8 +48,11 @@ async function tryAutoPlaylist(videoId) {
     // Первые 5 — сразу
     socket.emit('queue_add_playlist', { episodes: firstBatch, auto: true });
 
+<<<<<<< HEAD
+=======
     if (!queuePanelOpen) toggleQueue();
 
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
     // Остальные — по 1 с задержкой чтобы не перегружать сервер
     if (rest.length > 0) {
       let i = 0;
@@ -111,7 +122,10 @@ function showPlaylistBanner(showName, nextEpisodes, hasNextSeason, nextSeason) {
   document.getElementById('pbYesBtn')?.addEventListener('click', () => {
     socket.emit('queue_add_playlist', { episodes: nextEpisodes, auto: true });
     hidePlaylistBanner();
+<<<<<<< HEAD
+=======
     if (!queuePanelOpen) toggleQueue();
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
     toast(`📺 Добавлено ${nextEpisodes.length} серий`, 'play');
   });
 }

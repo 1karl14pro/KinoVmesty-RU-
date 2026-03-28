@@ -1,3 +1,28 @@
+<<<<<<< HEAD
+mySessionId = getCookie('kv_session') || null;
+
+// ─── Генерация случайного ника ───────────────────────────────
+
+function randomNick() {
+  const adj  = ['Быстрый','Тихий','Дикий','Ночной','Весёлый','Смелый','Хитрый','Добрый','Злой','Умный'];
+  const noun = ['Кот','Волк','Орёл','Лис','Медведь','Тигр','Дракон','Сокол','Рысь','Зубр'];
+  return adj[Math.random() * adj.length | 0] + noun[Math.random() * noun.length | 0];
+}
+
+function applyAutoNick(nick) {
+  ['nameCreate', 'nameJoin', 'nameBrowse'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.value) return;
+    el.value = nick;
+    el.classList.add('auto-nick');
+    el.addEventListener('input', () => el.classList.remove('auto-nick'), { once: true });
+  });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // Восстановление сессии
+  let restoredName = null;
+=======
 // ============================================================
 //  app.js — инициализация, сессии, комнаты, socket events
 //  Исправления:
@@ -9,6 +34,7 @@ mySessionId = getCookie('kv_session') || null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   // Восстановление сессии
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   if (mySessionId) {
     try {
       const resp = await fetch('/api/session', {
@@ -21,6 +47,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         mySessionId = data.sessionId;
         setCookie('kv_session', mySessionId);
         if (data.name) {
+<<<<<<< HEAD
+          restoredName = data.name;
+=======
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
           ['nameCreate', 'nameJoin', 'nameBrowse'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = data.name;
@@ -31,6 +61,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch {}
   }
 
+<<<<<<< HEAD
+  // Если имя не восстановилось — генерируем случайный ник
+  if (!restoredName) {
+    applyAutoNick(randomNick());
+  }
+
+=======
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   loadOpenRooms();
 
   // Код комнаты из URL (?room=ABC123)
@@ -59,7 +97,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 socket.on('session_restore', ({ roomCode, name, title }) => {
   const b = document.createElement('div');
+<<<<<<< HEAD
+=======
   // БАГ 7: дан явный ID вместо поиска по стилю position:fixed
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   b.id = 'session-restore-banner';
   b.style.cssText = [
     'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:300',
@@ -80,7 +121,10 @@ socket.on('session_restore', ({ roomCode, name, title }) => {
   document.body.prepend(b);
 });
 
+<<<<<<< HEAD
+=======
 // БАГ 7: используем ID вместо querySelector('[style*="position:fixed"]')
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 function rejoinRoom() {
   document.getElementById('session-restore-banner')?.remove();
   socket.emit('rejoin', { sessionId: mySessionId });
@@ -120,11 +164,25 @@ async function loadOpenRooms() {
     data.forEach(r => {
       const item = document.createElement('div');
       item.className = 'room-item';
+<<<<<<< HEAD
+
+      const thumb = r.thumbnail
+        ? `<img class="room-item-thumb" src="${esc(r.thumbnail)}" alt="">`
+        : `<div class="room-item-thumb room-item-thumb-placeholder">🎬</div>`;
+
+      item.innerHTML = `
+        ${thumb}
+        <div class="room-item-info">
+          <div class="room-item-title">${esc(r.title)}</div>
+          <div class="room-item-video">${esc(r.videoTitle || '')}</div>
+          <div class="room-item-meta">👥 ${r.members} · ${esc(r.platform)}</div>
+=======
       item.innerHTML = `
         <div class="room-item-icon">🎬</div>
         <div class="room-item-info">
           <div class="room-item-title">${esc(r.title)}</div>
           <div class="room-item-meta">👥 ${r.members} · ${esc(r.videoUrl.slice(0, 40))}...</div>
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
         </div>
         <button class="room-item-join" onclick="joinOpenRoom('${r.code}')">Войти</button>`;
       list.appendChild(item);
@@ -136,7 +194,11 @@ async function loadOpenRooms() {
 
 function joinOpenRoom(code) {
   socket.emit('join_open_room', {
+<<<<<<< HEAD
+    name: document.getElementById('nameBrowse').value.trim() || randomNick(),
+=======
     name: document.getElementById('nameBrowse').value.trim() || 'Гость',
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
     code,
     sessionId: mySessionId,
   });
@@ -145,7 +207,11 @@ function joinOpenRoom(code) {
 // ─── Создание / вход ─────────────────────────────────────────
 
 async function createRoom() {
+<<<<<<< HEAD
+  const name     = document.getElementById('nameCreate').value.trim() || randomNick();
+=======
   const name     = document.getElementById('nameCreate').value.trim() || 'Хозяин';
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   const videoUrl = document.getElementById('urlCreate').value.trim();
   const title    = document.getElementById('titleCreate').value.trim();
   if (!videoUrl) { toast('Вставь ссылку на видео!', 'info'); return; }
@@ -163,7 +229,11 @@ async function createRoom() {
 }
 
 async function joinRoom() {
+<<<<<<< HEAD
+  const name = document.getElementById('nameJoin').value.trim() || randomNick();
+=======
   const name = document.getElementById('nameJoin').value.trim() || 'Гость';
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   const code = document.getElementById('codeInput').value.trim().toUpperCase();
   if (!code) { toast('Введи код комнаты!', 'info'); return; }
   setBtn('joinBtn', true, '<span class="spinner"></span> Входим...');
@@ -205,8 +275,13 @@ socket.on('room_created', ({ code, videoId, videoUrl, platform, type }) => {
   document.getElementById('codePopup').classList.add('show');
   document.getElementById('hostBadge').classList.add('show');
 
+<<<<<<< HEAD
+  roomMembers[socket.id] = myName;
+  window._hostId = socket.id;
+=======
   // БАГ 11: храним себя по socket.id, а не по строке 'me'
   roomMembers[socket.id] = myName;
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 
   loadVideo(videoId, videoUrl, platform);
   addLog('Комната создана', 'sys');
@@ -222,9 +297,15 @@ socket.on('room_joined', async ({ code, videoId, videoUrl, platform, state, time
   if (isHost) document.getElementById('hostBadge').classList.add('show');
   if (!isHost) document.getElementById('vidProgress').classList.add('guest-mode');
 
+<<<<<<< HEAD
+  window._hostId = host ? socket.id : (membersList?.[0]?.id || null);
+
+  roomMembers[socket.id] = myName;
+=======
   // БАГ 11: храним себя по socket.id
   roomMembers[socket.id] = myName;
 
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   if (membersList) membersList.forEach(m => { roomMembers[m.id] = m.name; });
   if (queue) { queueItems = queue; renderQueue(); }
 
@@ -244,6 +325,42 @@ socket.on('room_joined', async ({ code, videoId, videoUrl, platform, state, time
       if (v.readyState >= 3) doSync();
       else v.addEventListener('canplay', doSync);
     } else {
+<<<<<<< HEAD
+      const trySync = (attempts = 0) => {
+        if (!ytOk()) {
+          if (attempts < 10) setTimeout(() => trySync(attempts + 1), 500);
+          return;
+        }
+        platformSeek(time);
+        if (state === 'playing') {
+          document.getElementById('bigPlay').textContent = '⏸';
+          // Мобиль: показываем оверлей вместо прямого play
+          _showYtMobileOverlay('▶', 'rgba(232,67,147,.85)', 'Нажми чтобы смотреть вместе');
+        }
+      };
+      setTimeout(() => trySync(), 800);
+    }
+  } else {
+    if (state === 'playing') {
+      if (currentPlatform === 'rutube') {
+        const v = document.getElementById('videoEl');
+        const tryPlay = () => {
+          platformPlay();
+          document.getElementById('bigPlay').textContent = '⏸';
+          v.removeEventListener('canplay', tryPlay);
+        };
+        if (v.readyState >= 3) tryPlay();
+        else v.addEventListener('canplay', tryPlay);
+      } else {
+        setTimeout(() => {
+          document.getElementById('bigPlay').textContent = '⏸';
+          _showYtMobileOverlay('▶', 'rgba(232,67,147,.85)', 'Нажми чтобы смотреть вместе');
+        }, 1500);
+      }
+    }
+  }
+
+=======
       setTimeout(doSync, 1500);
     }
   } else {
@@ -252,6 +369,7 @@ socket.on('room_joined', async ({ code, videoId, videoUrl, platform, state, time
       document.getElementById('bigPlay').textContent = '⏸';
     }
   }
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   addLog('Ты вошёл в комнату', 'sys');
 });
 
@@ -261,6 +379,10 @@ socket.on('rejoined', () => {
 });
 
 socket.on('you_are_host', () => {
+<<<<<<< HEAD
+  window._hostId = socket.id;
+=======
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   isHost = true;
   document.getElementById('hostBadge').classList.add('show');
   document.getElementById('vidProgress').classList.remove('guest-mode');
@@ -288,8 +410,13 @@ socket.on('user_left', ({ name, count, id }) => {
   if (id) {
     delete roomMembers[id];
     memberIds = memberIds.filter(i => i !== id);
+<<<<<<< HEAD
+    if (peerConns[id])    { peerConns[id].close(); delete peerConns[id]; }
+    if (remoteAudios[id]) { remoteAudios[id].remove(); delete remoteAudios[id]; }
+=======
     if (peerConns[id])     { peerConns[id].close(); delete peerConns[id]; }
     if (remoteAudios[id])  { remoteAudios[id].remove(); delete remoteAudios[id]; }
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   }
 });
 

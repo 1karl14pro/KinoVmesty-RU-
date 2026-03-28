@@ -1,5 +1,13 @@
 // ============================================================
+<<<<<<< HEAD
+//  Файл: ui.js
+//  Расположение: js/ui.js
+//  Описание: Управление интерфейсом приложения. Включает работу 
+//  с логами, переключение тем (светлая/тёмная), сайдбаром, мобильными 
+//  свайпами и управление микрофоном (WebRTC голосовой чат).
+=======
 //  ui.js — интерфейс: сайдбар, свайп, логи, тема, микрофон
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 // ============================================================
 
 // ─── Логи ────────────────────────────────────────────────────
@@ -35,7 +43,11 @@ function toggleSidebar() {
   const btn     = document.getElementById('sidebarToggleBtn');
   sidebar.classList.toggle('sidebar-hidden', sidebarHidden);
   if (btn) {
+<<<<<<< HEAD
+    btn.textContent = sidebarHidden ? '‹' : '›';
+=======
     btn.textContent = sidebarHidden ? '›' : '‹';
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
     btn.title       = sidebarHidden ? 'Показать чат' : 'Скрыть чат';
   }
 }
@@ -160,7 +172,55 @@ function deactivateMic() {
   duckVolume(false);
   document.getElementById('micBtn').classList.remove('active');
 }
+<<<<<<< HEAD
+function toggleMembersList() {
+  const dd = document.getElementById('membersDropdown');
+  dd.classList.toggle('show');
+  if (dd.classList.contains('show')) renderMembersList();
 
+  // закрываем по клику вне
+  setTimeout(() => {
+    document.addEventListener('click', function close(e) {
+      if (!e.target.closest('.members-count') && !e.target.closest('.members-dropdown')) {
+        dd.classList.remove('show');
+      }
+      document.removeEventListener('click', close);
+    });
+  }, 0);
+}
+
+function renderMembersList() {
+  const dd = document.getElementById('membersDropdown');
+  dd.innerHTML = '';
+
+  // Собираем список: хост первый
+  const entries = Object.entries(roomMembers).sort(([idA], [idB]) => {
+    if (idA === socket.id) return -1;
+    if (idB === socket.id) return 1;
+    return 0;
+  });
+
+  if (!entries.length) {
+    dd.innerHTML = '<div class="ml-empty">Никого нет</div>';
+    return;
+  }
+
+  entries.forEach(([id, name]) => {
+    const isMe   = id === socket.id;
+    const isHost = id === (window._hostId || socket.id); // см. ниже
+    const div    = document.createElement('div');
+    div.className = 'ml-item';
+    div.innerHTML = `
+      <div class="ml-avatar">${name[0].toUpperCase()}</div>
+      <span class="ml-name">${esc(name)}${isMe ? ' <span class="ml-you">ты</span>' : ''}</span>
+      ${isHost ? '<span class="ml-crown">👑</span>' : ''}
+    `;
+    dd.appendChild(div);
+  });
+}
+=======
+
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 function onMicDown()  { holdActivated = false; micHoldTimer = setTimeout(async () => { holdActivated = true; await activateMic(); }, 300); }
 function onMicUp(e)   { if (e) e.preventDefault(); clearTimeout(micHoldTimer); if (holdActivated) { deactivateMic(); setTimeout(() => { holdActivated = false; }, 100); } }
 function toggleMic()  { if (holdActivated) { holdActivated = false; return; } if (micActive) deactivateMic(); else activateMic(); }
