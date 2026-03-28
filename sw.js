@@ -7,6 +7,16 @@
 //    - убрано условие startsWith(origin) из fetch-обработчика
 // ============================================================
 
+<<<<<<< HEAD
+const CACHE = 'kinovmeste-v24';
+const STATIC = [
+  '/',
+  '/index.html',
+  '/style.css',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+=======
 const CACHE = 'kinovmeste-v6';
 const STATIC = [
   '/',
@@ -16,6 +26,7 @@ const STATIC = [
   '/icon-192.png',
   '/icon-512.png',
   // БАГ 3: исправлены пути — в HTML скрипты из /js/, а не корня
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   '/js/globals.js',
   '/js/utils.js',
   '/js/player.js',
@@ -24,10 +35,12 @@ const STATIC = [
   '/js/playlist.js',
   '/js/ui.js',
   '/js/app.js',
+<<<<<<< HEAD
+=======
   // БАГ 4: CDN кешируем явно при install
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
   'https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js',
 ];
-
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)

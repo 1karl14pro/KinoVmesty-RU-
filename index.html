@@ -3,20 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>КиноВместе 🎬</title>
+  <title>КиноВместе 🎬 — смотри видео с друзьями онлайн</title>
+
+  <!-- SEO -->
+  <meta name="description" content="Смотри видео вместе с друзьями в реальном времени. Поддержка Rutube, YouTube, VK Видео. Синхронизация, чат, голосовая связь.">
+  <meta name="keywords" content="смотреть вместе, совместный просмотр, кино онлайн, rutube вместе, youtube вместе, синхронный просмотр">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://kino.wakeup.su/">
+
+  <!-- Open Graph (для соцсетей и Яндекс) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kino.wakeup.su/">
+  <meta property="og:title" content="КиноВместе — смотри видео с друзьями онлайн">
+  <meta property="og:description" content="Совместный просмотр Rutube, YouTube и VK Видео в реальном времени. Чат, голос, очередь видео.">
+  <meta property="og:image" content="https://kino.wakeup.su/icon-512.png">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:site_name" content="КиноВместе">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="КиноВместе — смотри видео с друзьями">
+  <meta name="twitter:description" content="Совместный просмотр Rutube, YouTube и VK Видео в реальном времени.">
+  <meta name="twitter:image" content="https://kino.wakeup.su/icon-512.png">
+
+  <!-- остальное без изменений -->
   <link rel="icon" href="/favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="style.css">
-  <!-- PWA -->
-  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#e84393">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="КиноВместе">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="yandex-verification" content="a24d9bb977eb160d" />
 </head>
 <body>
 
@@ -26,7 +49,9 @@
 <div id="setup">
   <div class="logo">КиноВместе 🎬</div>
   <p class="tagline">Смотри видео с друзьями в реальном времени — Rutube, YouTube, VK Видео</p>
-
+    <a class="tg-support" href="https://t.me/BE3YM1E" target="_blank" rel="noopener">
+    💬 Поддержка в Telegram
+  </a>
   <div class="setup-tabs">
     <button class="stab active" onclick="switchTab('create')">✨ Создать</button>
     <button class="stab" onclick="switchTab('join')">🔗 Войти по коду</button>
@@ -187,12 +212,17 @@
     <span class="room-type-pill"  id="topType" onclick="showInvitePopup()" style="cursor:pointer">🌐</span>
     <span class="spacer"></span>
     <span class="dot on" id="dot"></span>
-    <span class="members-count" id="membersCount">👥 1</span>
+    <span class="members-count" id="membersCount" onclick="toggleMembersList()">👥 1</span>
+    <div class="members-dropdown" id="membersDropdown"></div>
     <span class="host-badge" id="hostBadge">👑</span>
     <button class="queue-topbar-btn" id="queueTopbarBtn" onclick="toggleQueue()" title="Очередь видео">
       📋 <span class="queue-badge" id="queueBadge" style="display:none">0</span>
     </button>
     <button class="share-btn"  onclick="shareRoom()">🔗</button>
+<<<<<<< HEAD
+    <a class="tg-btn" href="https://t.me/BE3YM1E" target="_blank" rel="noopener" title="Поддержка">✈️</a>
+=======
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
     <button class="theme-btn"  onclick="toggleTheme()" id="themeBtn">🌙</button>
     <button class="exit-btn"   onclick="location.reload()">✕</button>
   </div>
@@ -350,7 +380,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
+<<<<<<< HEAD
+=======
 <!-- Порядок важен: globals → utils → затем модули → app последним -->
+>>>>>>> 8aa985c0fce826614df3eaecd62e54070ebb984a
 <script src="/js/globals.js"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/player.js"></script>
@@ -360,11 +393,11 @@
 <script src="/js/ui.js"></script>
 <script src="/js/app.js"></script>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registered'))
-      .catch(e => console.warn('SW error:', e));
-  }
+  // if ('serviceWorker' in navigator) {
+  //   navigator.serviceWorker.register('/sw.js')
+  //     .then(() => console.log('SW registered'))
+  //     .catch(e => console.warn('SW error:', e));
+  // }
 </script>
 </body>
 </html>
